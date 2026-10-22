@@ -34,7 +34,7 @@ func (m RootModel) encodeSixelCmd(key int64, img image.Image, cols, rows int) te
 		}
 		m.debug("sixel encoded",
 			zap.Int("cols", cols), zap.Int("rows", rows), zap.Int("bytes", len(seq)))
-		return sixelEncodedMsg{key: key, cols: cols, rows: rows, seq: seq}
+		return sixelEncodedMsg{gen: m.sixelPaintGen, key: key, cols: cols, rows: rows, seq: seq}
 	}
 }
 
@@ -87,7 +87,7 @@ func (m *RootModel) dropSixel() {
 // different geometry) is dropped: painting it would put the wrong pixels under
 // the wrong box.
 func (m RootModel) handleSixelEncoded(msg sixelEncodedMsg) (RootModel, tea.Cmd) {
-	if msg.key != photoPlayerKey || m.photoViewer == nil || msg.seq == "" {
+	if msg.gen != m.sixelPaintGen || msg.key != photoPlayerKey || m.photoViewer == nil || msg.seq == "" {
 		return m, nil
 	}
 	if msg.cols != m.photoViewer.cols || msg.rows != m.photoViewer.rows {

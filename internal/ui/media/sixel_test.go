@@ -3,6 +3,7 @@ package media
 import (
 	"image"
 	"image/color"
+	"regexp"
 	"strconv"
 	"strings"
 	"testing"
@@ -171,7 +172,7 @@ func TestSixelSeqStructure(t *testing.T) {
 
 	// Every palette definition is the only place "#i;2;r;g;b" appears; the
 	// "#i" in the pixel data only selects an entry already defined.
-	defs := strings.Count(seq, ";2;")
+	defs := len(regexp.MustCompile(`#[0-9]+;2;[0-9]+;[0-9]+;[0-9]+`).FindAllString(seq, -1))
 	assert.Positive(t, defs)
 	assert.LessOrEqual(t, defs, sixelMaxColors, "never more colors than a terminal accepts")
 }
@@ -232,19 +233,31 @@ func TestSixelSeqRejectsEmpty(t *testing.T) {
 func TestSixelPixelSize(t *testing.T) {
 	w, h := sixelPixelSize(80, 40, 10, 20)
 	assert.Equal(t, 800, w)
-	assert.Equal(t, 804, h, "800px rounded up to a whole band")
-	assert.Zero(t, h%sixelBandRows, "height must be a whole number of bands")
+	assert.Equal(t, 800, h, "never overflow the reserved cell footprint")
 
 	// Unknown cell size falls back to the default aspect.
 	w, h = sixelPixelSize(10, 5, 0, 0)
 	assert.Equal(t, 10*sixelFallbackCellW, w)
-	assert.Equal(t, 102, h, "5x20px rounded up to a whole band")
+	assert.Equal(t, 100, h)
 
 	// The width cap scales the height down with it.
 	w, h = sixelPixelSize(400, 100, 40, 40)
 	assert.Equal(t, maxTransmitPx, w)
 	assert.Less(t, h, 4000)
-	assert.Zero(t, h%sixelBandRows)
+	assert.Positive(t, h)
+}
+
+func TestSixelPartialBandKeepsExactHeight(t *testing.T) {
+	t.Cleanup(func() { SetCellPx(0, 0) })
+	SetCellPx(10, 23)
+	seq, err := SixelSeq(gradientImage(20, 20), 2, 1)
+	require.NoError(t, err)
+	decoded := decodeSixel(t, seq)
+	assert.Equal(t, 23, decoded.h)
+	for x := 0; x < decoded.w; x++ {
+		assert.Equal(t, uint8(255), decoded.pix[22*decoded.w+x].A,
+			"the partial final band must still paint the last row")
+	}
 }
 
 func TestPositionSixel(t *testing.T) {

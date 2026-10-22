@@ -4,6 +4,8 @@ import (
 	"image"
 	"strconv"
 	"strings"
+
+	xansi "github.com/charmbracelet/x/ansi"
 )
 
 // Inline sixel support: the message list keeps drawing block art (so its layout
@@ -57,6 +59,29 @@ func InlineMarker(ref InlineRef) string {
 	sb.WriteString(inlineMarkerClose)
 	sb.WriteString(inlineMarkerDone)
 	return sb.String()
+}
+
+// TruncateInlineLeft cuts cells from a marked art row, keeping the marker's
+// horizontal crop consistent. Album badges replace the leading cells of the
+// first row; retaining the full image width there would paint beyond the tile.
+// Unmarked rows retain the ordinary ANSI-aware truncation behavior.
+func TruncateInlineLeft(line string, cols int) string {
+	if cols <= 0 {
+		return line
+	}
+	ref, start, next, ok := ParseInlineMarker(line, 0)
+	if !ok {
+		return xansi.TruncateLeft(line, cols, "")
+	}
+	left := xansi.StringWidth(line[:start])
+	drop := max(0, cols-left)
+	if drop >= ref.WinCols {
+		return xansi.TruncateLeft(line[:start]+line[next:], cols, "")
+	}
+	ref.HOff += drop
+	ref.WinCols -= drop
+	return xansi.TruncateLeft(line[:start], cols, "") + InlineMarker(ref) +
+		xansi.TruncateLeft(line[next:], drop, "")
 }
 
 // ParseInlineMarker finds the next marker in line at or after from, returning

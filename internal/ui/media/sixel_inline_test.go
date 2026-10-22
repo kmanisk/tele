@@ -7,6 +7,7 @@ import (
 	"strconv"
 	"testing"
 
+	xansi "github.com/charmbracelet/x/ansi"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -56,6 +57,26 @@ func TestParseInlineMarkerNoMarker(t *testing.T) {
 	_, _, next, ok := ParseInlineMarker("just text", 0)
 	assert.False(t, ok)
 	assert.Zero(t, next)
+}
+
+func TestTruncateInlineLeftAdjustsBadgeCrop(t *testing.T) {
+	ref := InlineRef{ID: 1, CoverCols: 20, CoverRows: 8, HOff: 2, WinCols: 12, WinRows: 6}
+	line := "  " + InlineMarker(ref) + "abcdefghijkl"
+	for _, tc := range []struct{ cut, left, width, offset int }{
+		{1, 1, 12, 2}, // Badge ends in the contain-mode padding.
+		{6, 0, 8, 6},  // Badge covers padding and four image cells.
+	} {
+		out := TruncateInlineLeft(line, tc.cut)
+		got, start, _, ok := ParseInlineMarker(out, 0)
+		require.True(t, ok)
+		assert.Equal(t, tc.left, xansi.StringWidth(out[:start]))
+		assert.Equal(t, tc.width, got.WinCols)
+		assert.Equal(t, tc.offset, got.HOff)
+		assert.Equal(t, 14-tc.cut, xansi.StringWidth(out))
+	}
+	out := TruncateInlineLeft(line, 14)
+	_, _, _, ok := ParseInlineMarker(out, 0)
+	assert.False(t, ok, "a completely covered row cannot paint an image")
 }
 
 func TestParseInlineMarkerTruncatedAndOutOfRange(t *testing.T) {

@@ -13,12 +13,19 @@ inside them.
 
 Foot, and other terminals that draw DEC sixel images but not Kitty placements,
 get a third mode: `photos.mode: sixel` (picked automatically for `TERM=foot`).
-The photo modal is then painted through the sixel path at full terminal
-resolution, while the message list keeps block art. That split is not a
-shortcut: a sixel is painted at the cursor and owned by the cells it covers, and
-the terminal erases it as soon as anything rewrites those cells - which every
-scrolling repaint of the list does. The modal holds still, so it can be painted
-once, after the frame, over cells that stay blank while it is open.
+Inline previews, including side-by-side album tiles, and the photo modal are
+painted at terminal pixel resolution. Block art remains underneath as a
+fallback. A sixel belongs to the terminal cells it covers, so graphics are
+repainted after text updates. Encodes are cached, unchanged frames do not
+repaint, and late results are discarded when scrolling, overlays, or resizing
+have changed their coordinates. Moving or removing placements invalidates the
+terminal once to clear pixels the text renderer cannot track. Album badges
+retain their text cells by cropping the image on the badge row.
+
+Automatic detection also recognizes mlterm and WezTerm. Use `photos.mode:
+blocks` to force the universal fallback, or `photos.mode: sixel` to explicitly
+select a terminal with sixel support. Animated GIFs, video playback and avatars
+keep their existing Kitty-only paths.
 
 Press `o` to open the full-quality image in an in-app modal viewer, with sender
 and timestamp on the border, or `O` to open it in an external viewer.

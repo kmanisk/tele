@@ -1,8 +1,10 @@
 package ui
 
 import (
+	"fmt"
 	"image"
 	"image/color"
+	"strings"
 	"testing"
 
 	tea "charm.land/bubbletea/v2"
@@ -10,7 +12,9 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
+	"github.com/sorokin-vladimir/tele/internal/domain"
 	"github.com/sorokin-vladimir/tele/internal/ui/media"
+	"github.com/sorokin-vladimir/tele/internal/ui/screens"
 )
 
 // markedRow is one frame line carrying the marker of image id at art row row.
@@ -120,17 +124,25 @@ func inlineFrame() []string {
 	}
 }
 
+func finishInlinePaint(t *testing.T, m RootModel, cmd tea.Cmd) (RootModel, tea.RawMsg) {
+	t.Helper()
+	encoded, ok := cmd().(inlineSixelEncodedMsg)
+	require.True(t, ok)
+	next, write := m.handleInlineSixelEncoded(encoded)
+	require.NotNil(t, write)
+	raw, ok := write().(tea.RawMsg)
+	require.True(t, ok)
+	return next, raw
+}
+
 func TestInlineTickPaintsThenSkipsUnchangedFrame(t *testing.T) {
 	m := inlineModel(t)
 	m.sixelInline.record(inlineFrame())
 
 	next, cmd := m.handleInlineSixelTick()
 	require.NotNil(t, cmd, "first tick paints")
-	msg := cmd()
-	require.NotNil(t, msg, "paint yields a raw write")
-	raw, ok := msg.(tea.RawMsg)
-	require.Truef(t, ok, "expected a raw write, got %T", msg)
-	payload, _ := raw.Msg.(string)
+	next, raw := finishInlinePaint(t, next, cmd)
+	payload := fmt.Sprint(raw.Msg)
 	assert.Contains(t, payload, "\x1bP", "the payload is a sixel")
 	assert.Contains(t, payload, "\x1b[2;1H", "positioned at the first art row")
 
@@ -143,7 +155,7 @@ func TestInlineTickRepaintsChangedFrame(t *testing.T) {
 	m.sixelInline.record(inlineFrame())
 	next, cmd := m.handleInlineSixelTick()
 	require.NotNil(t, cmd)
-	cmd()
+	next, _ = finishInlinePaint(t, next, cmd)
 
 	// A selection change rewrites the bubble border on the image rows.
 	changed := inlineFrame()
@@ -172,6 +184,7 @@ func TestInlineTickBlocksUnderOverlay(t *testing.T) {
 
 	m2 := m
 	m2.photoViewer = nil
+	m2.sixelInline.record(inlineFrame()) // View restores the chat frame.
 	next, cmd := m2.handleInlineSixelTick()
 	assert.NotNil(t, cmd, "the chat repaints once the modal closes")
 	_ = next
@@ -182,7 +195,7 @@ func TestInlineSeqCacheReusesEncoding(t *testing.T) {
 	m.sixelInline.record(inlineFrame())
 	next, cmd := m.handleInlineSixelTick()
 	require.NotNil(t, cmd)
-	cmd()
+	next, _ = finishInlinePaint(t, next, cmd)
 
 	region := inlineRegions(inlineFrame())[0]
 	cached, ok := next.sixelInline.seq(region.seqKey)
@@ -206,4 +219,104 @@ func TestInlineScheduleOnlyInSixelMode(t *testing.T) {
 
 	m.imageMode = media.ModeBlocks
 	assert.Nil(t, m.scheduleInlineSixelPaint())
+}
+
+func TestInlineDropsEncodeAfterScroll(t *testing.T) {
+	m := inlineModel(t)
+	m.sixelInline.record(inlineFrame())
+	m, cmd := m.handleInlineSixelTick()
+	require.NotNil(t, cmd)
+	encoded := cmd().(inlineSixelEncodedMsg)
+	m.sixelInline.record([]string{"a different viewport"})
+	_, write := m.handleInlineSixelEncoded(encoded)
+	assert.Nil(t, write, "old coordinates must never reach the terminal")
+	assert.Empty(t, m.sixelInline.painted)
+}
+
+func TestInlineDropsEncodeAfterOverlayOrFontChange(t *testing.T) {
+	for _, changed := range []string{"overlay", "font"} {
+		t.Run(changed, func(t *testing.T) {
+			m := inlineModel(t)
+			m.sixelInline.record(inlineFrame())
+			m, cmd := m.handleInlineSixelTick()
+			encoded := cmd().(inlineSixelEncodedMsg)
+			if changed == "overlay" {
+				m.photoViewer = &photoViewer{}
+			} else {
+				m.sixelInline = newInlineSixelState()
+			}
+			_, write := m.handleInlineSixelEncoded(encoded)
+			assert.Nil(t, write)
+		})
+	}
+}
+
+func TestInlineMovedAndRemovedImagesClearOnce(t *testing.T) {
+	for _, moved := range []bool{false, true} {
+		m := inlineModel(t)
+		m.sixelInline.record(inlineFrame())
+		m, encode := m.handleInlineSixelTick()
+		m, _ = finishInlinePaint(t, m, encode)
+		frame := []string{"no image"}
+		if moved {
+			frame = append([]string{"new row"}, inlineFrame()...)
+		}
+		m.sixelInline.record(frame)
+		require.True(t, m.sixelInline.clearPending)
+		m, clear := m.handleInlineSixelTick()
+		require.NotNil(t, clear, "invalidate the terminal's stale graphics")
+		assert.False(t, m.sixelInline.clearPending)
+		assert.Empty(t, m.sixelInline.painted)
+		m.sixelInline.record(frame)
+		assert.False(t, m.sixelInline.clearPending, "idle frames must not clear repeatedly")
+	}
+}
+
+func TestInlineOnlyOneEncodeInFlight(t *testing.T) {
+	m := inlineModel(t)
+	m.sixelInline.record(inlineFrame())
+	m, first := m.handleInlineSixelTick()
+	require.NotNil(t, first)
+	_, duplicate := m.handleInlineSixelTick()
+	assert.Nil(t, duplicate)
+	_, _ = finishInlinePaint(t, m, first)
+}
+
+func TestInlineQueuedWriteDropsAfterClearOrScroll(t *testing.T) {
+	m := inlineModel(t)
+	m.sixelInline.record(inlineFrame())
+	m, encode := m.handleInlineSixelTick()
+	m, raw := finishInlinePaint(t, m, encode)
+	require.NotEmpty(t, fmt.Sprint(raw.Msg))
+	m.sixelInline.record([]string{"closed chat"})
+	_, clear := m.handleInlineSixelTick()
+	require.NotNil(t, clear)
+	assert.Empty(t, fmt.Sprint(raw.Msg), "an old Raw must not repaint after cleanup")
+}
+
+func TestInlineAlbumBadgesKeepPaintInsideEachTile(t *testing.T) {
+	m := inlineModel(t).WithImageMode(media.ModeSixel)
+	img, ok := m.imageCache.Peek(11)
+	require.True(t, ok)
+	m.imageCache.Add(22, img)
+	m.chat.SetHeader(screens.ChatHeader{ChatID: 1, Title: "Album"})
+	m.chat.SetKnownImages(m.imageCache)
+	var messages []domain.Message
+	for i, id := range []int64{11, 22} {
+		messages = append(messages, domain.Message{ID: i + 1, ChatID: 1, SenderID: 7, GroupedID: 9,
+			Media: &domain.MediaRef{Kind: domain.MediaPhoto}, Photo: &domain.PhotoRef{ID: id}})
+	}
+	m.chat.SetMessages(messages)
+	regions := inlineRegions(strings.Split(m.View().Content, "\n"))
+	require.Len(t, regions, 4, "each tile has a badge-cropped first row and the remaining rows")
+	for _, id := range []int64{11, 22} {
+		var rightEdges []int
+		for _, r := range regions {
+			if r.ref.ID == id {
+				rightEdges = append(rightEdges, r.col+r.ref.WinCols)
+			}
+		}
+		require.Len(t, rightEdges, 2)
+		assert.Equal(t, rightEdges[0], rightEdges[1], "the badge must not shift a full-width image beyond its tile")
+	}
 }

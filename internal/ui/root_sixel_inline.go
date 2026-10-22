@@ -46,11 +46,14 @@ const inlineSeqCacheSize = 24
 // inlineSixelState is shared by every copy of the model (RootModel is a value
 // type) and holds what the last frame looked like and what was painted over it.
 type inlineSixelState struct {
-	mu      sync.Mutex
-	frame   []string
-	painted map[string]uint64
-	seqs    map[string]string
-	order   []string
+	mu           sync.Mutex
+	frame        []string
+	painted      map[string]uint64
+	seqs         map[string]string
+	order        []string
+	revision     uint64
+	pending      bool
+	clearPending bool
 }
 
 func newInlineSixelState() *inlineSixelState {
@@ -66,8 +69,25 @@ func (s *inlineSixelState) record(lines []string) {
 		return
 	}
 	s.mu.Lock()
+	defer s.mu.Unlock()
+	if hashFrameLines(s.frame, 0, len(s.frame)) == hashFrameLines(lines, 0, len(lines)) {
+		return
+	}
+	// Raw graphics are not in Bubble Tea's cell buffer. If a placement moves
+	// or disappears, a text diff can leave its pixels in otherwise unchanged
+	// cells. Invalidate the terminal once, then repaint the surviving images.
+	visible := map[string]bool{}
+	for _, r := range inlineRegions(lines) {
+		visible[r.key] = true
+	}
+	for key := range s.painted {
+		if !visible[key] {
+			s.clearPending = true
+			break
+		}
+	}
+	s.revision++
 	s.frame = lines
-	s.mu.Unlock()
 }
 
 // forget drops the painted bookkeeping: the cells under the images were
@@ -77,9 +97,7 @@ func (s *inlineSixelState) forget() {
 	if s == nil {
 		return
 	}
-	s.mu.Lock()
-	s.painted = map[string]uint64{}
-	s.mu.Unlock()
+	s.record(nil)
 }
 
 // seq returns a cached encoding for one crop.
@@ -238,6 +256,26 @@ type inlinePaintOp struct {
 	seq    string // set when the crop was already encoded
 }
 
+// Bubble Tea calls String immediately before executing Raw on its event loop.
+// Recheck there as well: an accepted encode can still wait behind a scroll or
+// ClearScreen message in the command queue. No model update can interleave
+// between this check and the write.
+type inlineSixelWrite struct {
+	state    *inlineSixelState
+	revision uint64
+	seq      string
+}
+
+func (w inlineSixelWrite) String() string {
+	w.state.mu.Lock()
+	defer w.state.mu.Unlock()
+	if w.revision != w.state.revision || w.state.clearPending || len(w.state.frame) == 0 {
+		w.state.painted = map[string]uint64{}
+		return ""
+	}
+	return w.seq
+}
+
 // inlinePaintOps collects the images that need repainting. It runs on the
 // update goroutine: the image cache is not safe for concurrent use.
 func (m *RootModel) inlinePaintOps() []inlinePaintOp {
@@ -272,7 +310,6 @@ func (m *RootModel) inlinePaintOps() []inlinePaintOp {
 			op.seq = seq
 		}
 		ops = append(ops, op)
-		painted[r.key] = r.hash
 	}
 	// Drop bookkeeping for images that scrolled away, so returning to them
 	// repaints instead of trusting a hash of cells that were since rewritten.
@@ -286,15 +323,35 @@ func (m *RootModel) inlinePaintOps() []inlinePaintOp {
 
 // handleInlineSixelTick paints whatever the last frame showed and left dirty.
 func (m RootModel) handleInlineSixelTick() (RootModel, tea.Cmd) {
+	state := m.sixelInline
+	if state == nil {
+		return m, nil
+	}
+	state.mu.Lock()
+	if state.clearPending {
+		state.clearPending = false
+		state.painted = map[string]uint64{}
+		state.mu.Unlock()
+		modalPaint := m.scheduleSixelPaint()
+		return m, tea.Sequence(tea.ClearScreen, tea.Batch(m.scheduleInlineSixelPaint(), modalPaint))
+	}
+	if state.pending {
+		state.mu.Unlock()
+		return m, nil
+	}
+	revision := state.revision
+	state.mu.Unlock()
 	ops := (&m).inlinePaintOps()
 	if len(ops) == 0 {
 		return m, nil
 	}
-	state := m.sixelInline
+	state.mu.Lock()
+	state.pending = true
+	state.mu.Unlock()
 	return m, func() tea.Msg {
 		started := time.Now()
 		var sb strings.Builder
-		images := 0
+		var painted []inlineRegion
 		for _, op := range ops {
 			seq := op.seq
 			if seq == "" {
@@ -306,12 +363,26 @@ func (m RootModel) handleInlineSixelTick() (RootModel, tea.Cmd) {
 				state.putSeq(op.region.seqKey, seq)
 			}
 			sb.WriteString(media.PositionSixel(op.region.row, op.region.col, seq))
-			images++
+			painted = append(painted, op.region)
 		}
-		if images == 0 {
-			return nil
-		}
-		m.debug("inline sixel painted", zap.Int("images", images), zap.Int("bytes", sb.Len()), zap.Duration("took", time.Since(started)))
-		return tea.Raw(sb.String())()
+		m.debug("inline sixel encoded", zap.Int("images", len(painted)), zap.Int("bytes", sb.Len()), zap.Duration("took", time.Since(started)))
+		return inlineSixelEncodedMsg{state: state, revision: revision, regions: painted, seq: sb.String()}
 	}
+}
+
+// Encoding runs outside Update. A scroll, chat switch, overlay, or resize may
+// have invalidated its coordinates by the time it completes. Validate on the
+// update goroutine before allowing a raw terminal write, and only then mark
+// placements painted. Failed and stale encodes remain eligible for a retry.
+func (m RootModel) handleInlineSixelEncoded(msg inlineSixelEncodedMsg) (RootModel, tea.Cmd) {
+	msg.state.mu.Lock()
+	msg.state.pending = false
+	defer msg.state.mu.Unlock()
+	if msg.state != m.sixelInline || msg.revision != msg.state.revision || m.inlineSixelBlocked() || msg.seq == "" {
+		return m, nil
+	}
+	for _, r := range msg.regions {
+		msg.state.painted[r.key] = r.hash
+	}
+	return m, tea.Raw(inlineSixelWrite{state: msg.state, revision: msg.revision, seq: msg.seq})
 }

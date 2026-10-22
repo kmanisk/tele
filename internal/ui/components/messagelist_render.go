@@ -4,8 +4,8 @@ import (
 	"strings"
 
 	"charm.land/lipgloss/v2"
-	xansi "github.com/charmbracelet/x/ansi"
 	"github.com/sorokin-vladimir/tele/internal/domain"
+	"github.com/sorokin-vladimir/tele/internal/ui/media"
 	"github.com/sorokin-vladimir/tele/internal/ui/theme"
 )
 
@@ -767,7 +767,7 @@ func overlayBadgeOnArtRow(artRow, label string, imgCols int) string {
 	if labelW >= imgCols {
 		return painted // label spans the whole row; no image cells remain
 	}
-	return painted + xansi.TruncateLeft(artRow, labelW, "")
+	return painted + media.TruncateInlineLeft(artRow, labelW)
 }
 
 // captionLines wraps the album caption inside the bubble borders, matching the

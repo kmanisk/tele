@@ -15,6 +15,13 @@ type PhotoReadyMsg struct {
 // last frame left dirty. It carries no payload: the frame itself is the state.
 type inlineSixelTickMsg struct{}
 
+type inlineSixelEncodedMsg struct {
+	state    *inlineSixelState
+	revision uint64
+	regions  []inlineRegion
+	seq      string
+}
+
 // gifFileReadyMsg carries the temp-file path of a downloaded GIF (the full MP4),
 // ready to be decoded into frames.
 type gifFileReadyMsg struct {
@@ -82,6 +89,7 @@ type kittyTransmittedMsg struct {
 // modal); cols/rows are the geometry it was encoded at, so a result that
 // outlived its box can be dropped instead of painted.
 type sixelEncodedMsg struct {
+	gen  uint64
 	key  int64
 	cols int
 	rows int

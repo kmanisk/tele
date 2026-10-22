@@ -116,6 +116,18 @@ func TestSixelPaint_DropsStaleGeometry(t *testing.T) {
 	assert.Nil(t, cmd)
 }
 
+func TestSixelEncodeDropsPreviousPhotoAtSameSize(t *testing.T) {
+	m := newSizedModel(t).WithImageMode(media.ModeSixel)
+	m.fullImageCache.Add(42, solidImage(400, 300))
+	m, encode := m.openPhotoModal(domain.PhotoRef{ID: 42}, 100, "Alice", time.Now())
+	old := runSixelCmd(t, encode).(sixelEncodedMsg)
+	// A different photo can have exactly the same box dimensions.
+	m.dropSixel()
+	_, write := m.handleSixelEncoded(old)
+	assert.Nil(t, write)
+	assert.Empty(t, m.sixelSeq)
+}
+
 func TestPhotoModalView_SixelReservesBlankCells(t *testing.T) {
 	m := newSizedModel(t)
 	m.imageMode = media.ModeSixel

@@ -568,7 +568,11 @@ func (m RootModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	// Sixel mode paints inline images out of band, after the frame. Any event
 	// may have rewritten the cells under one, so ask for a paint after this one;
 	// the paint itself is the one event that must not ask again.
-	if _, isPaint := msg.(inlineSixelTickMsg); !isPaint {
+	_, isPaint := msg.(inlineSixelTickMsg)
+	if encoded, ok := msg.(inlineSixelEncodedMsg); ok && encoded.seq == "" {
+		isPaint = true // An encode failure must not create an idle retry loop.
+	}
+	if !isPaint {
 		if pcmd := rm.scheduleInlineSixelPaint(); pcmd != nil {
 			cmd = tea.Batch(cmd, pcmd)
 		}
@@ -767,6 +771,7 @@ func (m RootModel) updateInner(msg tea.Msg) (tea.Model, tea.Cmd) {
 		sixelEncodedMsg,
 		sixelPaintMsg,
 		inlineSixelTickMsg,
+		inlineSixelEncodedMsg,
 		components.OpenInViewerRequest,
 		components.OpenExternalRequest,
 		components.DownloadFileRequest,

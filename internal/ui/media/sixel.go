@@ -20,8 +20,8 @@ import (
 // part of an image when those cells are reprinted (sixel_overwrite_at_cursor in
 // terminal.c). So a sixel cannot live inside a repainted frame the way a
 // placeholder grid does; the caller paints it out of band, after the frame,
-// over cells the frame keeps blank. Only the overlays that hold still long
-// enough are worth it: the photo modal, not the scrolling message list.
+// over cells reserved by the frame. Both modals and inline previews use this
+// ordering; inline placements must also be invalidated when the viewport moves.
 
 const (
 	// sixelMaxColors is the most a sixel image may use. 256 is what every
@@ -135,9 +135,8 @@ func PositionSixel(row, col int, seq string) string {
 }
 
 // sixelPixelSize returns the pixel size to encode at so the image fills cols×
-// rows cells. The height is rounded up to a whole band: a partial band leaves
-// the last rows of pixels unscaled and the image a few pixels short of its box,
-// while a full band is simply cropped by the cells it covers.
+// rows cells. A partial final band has unused bits; rounding the raster up to
+// six pixels would paint outside the reserved cells into the following row.
 func sixelPixelSize(cols, rows int, cellW, cellH float64) (int, int) {
 	if cols <= 0 || rows <= 0 {
 		return 0, 0
@@ -157,9 +156,6 @@ func sixelPixelSize(cols, rows int, cellW, cellH float64) (int, int) {
 		// Keep the box's aspect while bounding the upload.
 		h = int(float64(h)*float64(maxTransmitPx)/float64(w) + 0.5)
 		w = maxTransmitPx
-	}
-	if r := h % sixelBandRows; r != 0 {
-		h += sixelBandRows - r
 	}
 	return w, h
 }

@@ -106,6 +106,9 @@ func (m RootModel) updateNetworkMsg(msg tea.Msg) (RootModel, tea.Cmd) {
 		// frame that rewrote their cells.
 		return m.handleInlineSixelTick()
 
+	case inlineSixelEncodedMsg:
+		return m.handleInlineSixelEncoded(msg)
+
 	case FullPhotoReadyMsg:
 		m.fullImageCache.Add(msg.PhotoID, msg.Image)
 		return m.handleFullPhotoReady(msg)

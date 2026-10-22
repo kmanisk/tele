@@ -23,9 +23,9 @@ const (
 	ModeBlocks Mode = iota
 	// ModeKitty renders photos via the Kitty graphics protocol.
 	ModeKitty
-	// ModeSixel renders the photo modal and other full-screen images via DEC
-	// sixel, and leaves everything that repaints (the message list) on block
-	// art - a sixel is erased by any later write to the cells it covers.
+	// ModeSixel renders inline photo previews and the photo modal via DEC
+	// sixel, repainting graphics after text updates and retaining block art
+	// underneath as a fallback.
 	ModeSixel
 )
 

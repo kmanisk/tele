@@ -47,7 +47,9 @@ func (m RootModel) updateUIMsg(msg tea.Msg) (RootModel, tea.Cmd) {
 		}
 		// Encoded crops use pixel dimensions; cell geometry alone is insufficient
 		// after a font-size change, including when the cell count stays the same.
+		m.sixelInline.forget() // Invalidate raw writes queued on the old state.
 		m.sixelInline = newInlineSixelState()
+		m.sixelInline.clearPending = m.imageMode == media.ModeSixel
 		// An open modal encoded before this reply was sized from the fallback
 		// cell, so encode it again against the real one.
 		if m.photoViewer != nil && m.photoViewer.img != nil {
