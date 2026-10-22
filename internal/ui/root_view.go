@@ -193,6 +193,7 @@ func (m RootModel) View() tea.View {
 	// the inline painter; while an overlay covers the chat, drop the painted
 	// bookkeeping instead, since the graphics under it are gone.
 	if m.imageMode == media.ModeSixel && m.sixelInline != nil {
+		content = m.sixelInline.clearPrefix() + content
 		if m.inlineSixelBlocked() {
 			m.sixelInline.forget()
 		} else {

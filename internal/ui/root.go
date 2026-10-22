@@ -772,6 +772,7 @@ func (m RootModel) updateInner(msg tea.Msg) (tea.Model, tea.Cmd) {
 		sixelPaintMsg,
 		inlineSixelTickMsg,
 		inlineSixelEncodedMsg,
+		inlineSixelClearedMsg,
 		components.OpenInViewerRequest,
 		components.OpenExternalRequest,
 		components.DownloadFileRequest,

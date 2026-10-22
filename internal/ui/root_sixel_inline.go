@@ -46,14 +46,16 @@ const inlineSeqCacheSize = 24
 // inlineSixelState is shared by every copy of the model (RootModel is a value
 // type) and holds what the last frame looked like and what was painted over it.
 type inlineSixelState struct {
-	mu           sync.Mutex
-	frame        []string
-	painted      map[string]uint64
-	seqs         map[string]string
-	order        []string
-	revision     uint64
-	pending      bool
-	clearPending bool
+	mu            sync.Mutex
+	frame         []string
+	painted       map[string]uint64
+	seqs          map[string]string
+	order         []string
+	revision      uint64
+	pending       bool
+	clearPending  bool
+	clearing      bool
+	clearRevision uint64
 }
 
 func newInlineSixelState() *inlineSixelState {
@@ -98,6 +100,22 @@ func (s *inlineSixelState) forget() {
 		return
 	}
 	s.record(nil)
+}
+
+// clearPrefix changes the view identity after ClearScreen. Bubble Tea 2.0.6
+// otherwise skips its renderer flush when View.Content is unchanged, even
+// though ClearScreen has marked the terminal for erasure. The SGR reset has
+// no cell width and stays constant between clears, so idle views remain equal.
+func (s *inlineSixelState) clearPrefix() string {
+	if s == nil {
+		return ""
+	}
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	if s.clearRevision%2 != 0 {
+		return "\x1b[0m"
+	}
+	return ""
 }
 
 // seq returns a cached encoding for one crop.
@@ -264,14 +282,17 @@ type inlineSixelWrite struct {
 	state    *inlineSixelState
 	revision uint64
 	seq      string
+	regions  []inlineRegion
 }
 
 func (w inlineSixelWrite) String() string {
 	w.state.mu.Lock()
 	defer w.state.mu.Unlock()
 	if w.revision != w.state.revision || w.state.clearPending || len(w.state.frame) == 0 {
-		w.state.painted = map[string]uint64{}
 		return ""
+	}
+	for _, r := range w.regions {
+		w.state.painted[r.key] = r.hash
 	}
 	return w.seq
 }
@@ -328,12 +349,14 @@ func (m RootModel) handleInlineSixelTick() (RootModel, tea.Cmd) {
 		return m, nil
 	}
 	state.mu.Lock()
-	if state.clearPending {
-		state.clearPending = false
-		state.painted = map[string]uint64{}
+	if state.clearing {
 		state.mu.Unlock()
-		modalPaint := m.scheduleSixelPaint()
-		return m, tea.Sequence(tea.ClearScreen, tea.Batch(m.scheduleInlineSixelPaint(), modalPaint))
+		return m, nil
+	}
+	if state.clearPending {
+		state.clearing = true
+		state.mu.Unlock()
+		return m, tea.Sequence(tea.ClearScreen, func() tea.Msg { return inlineSixelClearedMsg{state: state} })
 	}
 	if state.pending {
 		state.mu.Unlock()
@@ -373,7 +396,8 @@ func (m RootModel) handleInlineSixelTick() (RootModel, tea.Cmd) {
 // Encoding runs outside Update. A scroll, chat switch, overlay, or resize may
 // have invalidated its coordinates by the time it completes. Validate on the
 // update goroutine before allowing a raw terminal write, and only then mark
-// placements painted. Failed and stale encodes remain eligible for a retry.
+// placements painted at the actual write. Failed and stale encodes remain
+// eligible for a retry.
 func (m RootModel) handleInlineSixelEncoded(msg inlineSixelEncodedMsg) (RootModel, tea.Cmd) {
 	msg.state.mu.Lock()
 	msg.state.pending = false
@@ -381,8 +405,19 @@ func (m RootModel) handleInlineSixelEncoded(msg inlineSixelEncodedMsg) (RootMode
 	if msg.state != m.sixelInline || msg.revision != msg.state.revision || m.inlineSixelBlocked() || msg.seq == "" {
 		return m, nil
 	}
-	for _, r := range msg.regions {
-		msg.state.painted[r.key] = r.hash
+	return m, tea.Raw(inlineSixelWrite{state: msg.state, revision: msg.revision, seq: msg.seq, regions: msg.regions})
+}
+
+func (m RootModel) handleInlineSixelCleared(msg inlineSixelClearedMsg) (RootModel, tea.Cmd) {
+	msg.state.mu.Lock()
+	msg.state.painted = map[string]uint64{}
+	msg.state.clearPending = false
+	msg.state.clearing = false
+	msg.state.clearRevision++
+	msg.state.mu.Unlock()
+	if msg.state != m.sixelInline {
+		return m, nil
 	}
-	return m, tea.Raw(inlineSixelWrite{state: msg.state, revision: msg.revision, seq: msg.seq})
+	modalPaint := m.scheduleSixelPaint()
+	return m, tea.Batch(m.scheduleInlineSixelPaint(), modalPaint)
 }

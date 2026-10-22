@@ -15,6 +15,8 @@ type PhotoReadyMsg struct {
 // last frame left dirty. It carries no payload: the frame itself is the state.
 type inlineSixelTickMsg struct{}
 
+type inlineSixelClearedMsg struct{ state *inlineSixelState }
+
 type inlineSixelEncodedMsg struct {
 	state    *inlineSixelState
 	revision uint64

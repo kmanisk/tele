@@ -9,6 +9,7 @@ import (
 
 	tea "charm.land/bubbletea/v2"
 	uv "github.com/charmbracelet/ultraviolet"
+	xansi "github.com/charmbracelet/x/ansi"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
@@ -132,6 +133,7 @@ func finishInlinePaint(t *testing.T, m RootModel, cmd tea.Cmd) (RootModel, tea.R
 	require.NotNil(t, write)
 	raw, ok := write().(tea.RawMsg)
 	require.True(t, ok)
+	require.NotEmpty(t, fmt.Sprint(raw.Msg)) // Bubble Tea executes the raw write.
 	return next, raw
 }
 
@@ -265,6 +267,8 @@ func TestInlineMovedAndRemovedImagesClearOnce(t *testing.T) {
 		require.True(t, m.sixelInline.clearPending)
 		m, clear := m.handleInlineSixelTick()
 		require.NotNil(t, clear, "invalidate the terminal's stale graphics")
+		assert.True(t, m.sixelInline.clearing)
+		m, _ = m.handleInlineSixelCleared(inlineSixelClearedMsg{state: m.sixelInline})
 		assert.False(t, m.sixelInline.clearPending)
 		assert.Empty(t, m.sixelInline.painted)
 		m.sixelInline.record(frame)
@@ -319,4 +323,14 @@ func TestInlineAlbumBadgesKeepPaintInsideEachTile(t *testing.T) {
 		require.Len(t, rightEdges, 2)
 		assert.Equal(t, rightEdges[0], rightEdges[1], "the badge must not shift a full-width image beyond its tile")
 	}
+}
+
+func TestInlineClearInvalidatesRendererWithUnchangedCells(t *testing.T) {
+	m := inlineModel(t)
+	before := m.View().Content
+	m, _ = m.handleInlineSixelCleared(inlineSixelClearedMsg{state: m.sixelInline})
+	after := m.View().Content
+	assert.NotEqual(t, before, after, "Bubble Tea must not skip its pending screen erase")
+	assert.Equal(t, xansi.Strip(before), xansi.Strip(after))
+	assert.Equal(t, after, m.View().Content, "idle views remain identical")
 }

@@ -109,6 +109,9 @@ func (m RootModel) updateNetworkMsg(msg tea.Msg) (RootModel, tea.Cmd) {
 	case inlineSixelEncodedMsg:
 		return m.handleInlineSixelEncoded(msg)
 
+	case inlineSixelClearedMsg:
+		return m.handleInlineSixelCleared(msg)
+
 	case FullPhotoReadyMsg:
 		m.fullImageCache.Add(msg.PhotoID, msg.Image)
 		return m.handleFullPhotoReady(msg)
