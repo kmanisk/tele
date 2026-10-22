@@ -17,7 +17,7 @@ import (
 
 // runCmd executes a command tree until it yields a non-batch message, like the
 // runtime would.
-func runCmd(t *testing.T, cmd tea.Cmd) tea.Msg {
+func runSixelCmd(t *testing.T, cmd tea.Cmd) tea.Msg {
 	t.Helper()
 	if cmd == nil {
 		t.Fatal("expected a command")
@@ -30,7 +30,7 @@ func runCmd(t *testing.T, cmd tea.Cmd) tea.Msg {
 			}
 			if got := c(); got != nil {
 				if b, ok := got.(tea.BatchMsg); ok {
-					return runCmd(t, func() tea.Msg { return b })
+					return runSixelCmd(t, func() tea.Msg { return b })
 				}
 				return got
 			}
@@ -68,7 +68,7 @@ func TestOpenPhotoModal_SixelEncodesAtBoxSize(t *testing.T) {
 	require.NotNil(t, m2.photoViewer)
 	require.NotNil(t, cmd, "sixel mode encodes the modal image")
 
-	enc, ok := runCmd(t, cmd).(sixelEncodedMsg)
+	enc, ok := runSixelCmd(t, cmd).(sixelEncodedMsg)
 	require.True(t, ok, "the modal encode yields sixelEncodedMsg")
 	assert.Equal(t, int64(photoPlayerKey), enc.key)
 	assert.Equal(t, m2.photoViewer.cols, enc.cols, "encoded at the reserved box width")
@@ -81,12 +81,12 @@ func TestOpenPhotoModal_SixelEncodesAtBoxSize(t *testing.T) {
 	require.NotNil(t, paintCmd)
 	require.Equal(t, enc.seq, m3.sixelSeq)
 
-	tick, ok := runCmd(t, paintCmd).(sixelPaintMsg)
+	tick, ok := runSixelCmd(t, paintCmd).(sixelPaintMsg)
 	require.True(t, ok)
 
 	m4, rawCmd := m3.handleSixelPaint(tick)
 	require.NotNil(t, rawCmd, "the paint writes to the terminal")
-	raw, ok := runCmd(t, rawCmd).(tea.RawMsg)
+	raw, ok := runSixelCmd(t, rawCmd).(tea.RawMsg)
 	require.True(t, ok)
 	row, col := m4.photoModalOrigin()
 	assert.Contains(t, raw.Msg.(string), media.PositionSixel(row, col, enc.seq))
@@ -177,7 +177,7 @@ func TestCellSizeEventReencodesOpenModal(t *testing.T) {
 	assert.Empty(t, m2.sixelSeq, "the sequence sized from the guessed cell is dropped")
 	require.NotNil(t, cmd, "and the image is encoded again")
 
-	enc, ok := runCmd(t, cmd).(sixelEncodedMsg)
+	enc, ok := runSixelCmd(t, cmd).(sixelEncodedMsg)
 	require.True(t, ok)
 	assert.Equal(t, 20, enc.cols)
 	assert.Equal(t, 8, enc.rows)
