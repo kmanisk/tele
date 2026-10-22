@@ -13,6 +13,10 @@ Older releases are at <https://github.com/sorokin-vladimir/tele/releases>.
 
 ### Added
 
+- Sixel photo modals and inline previews, including clipped images and albums,
+  with automatic terminal detection and block-art fallback. Repeated image
+  placements stay separate, and malformed inline metadata is ignored safely.
+
 - `tele daemon` holds the account with no window: it keeps the connection and
   delivers desktop notifications, and windows join it as they would join any
   other `tele`. It never joins another one; one already holding the account is

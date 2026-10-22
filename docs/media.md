@@ -11,6 +11,15 @@ Ghostty and iTerm2 3.7.0 or newer, with an ANSI block-art fallback everywhere
 else. tmux and screen do not pass the protocol through, so images are block art
 inside them.
 
+Foot, and other terminals that draw DEC sixel images but not Kitty placements,
+get a third mode: `photos.mode: sixel` (picked automatically for `TERM=foot`).
+The photo modal is then painted through the sixel path at full terminal
+resolution, while the message list keeps block art. That split is not a
+shortcut: a sixel is painted at the cursor and owned by the cells it covers, and
+the terminal erases it as soon as anything rewrites those cells - which every
+scrolling repaint of the list does. The modal holds still, so it can be painted
+once, after the frame, over cells that stay blank while it is open.
+
 Press `o` to open the full-quality image in an in-app modal viewer, with sender
 and timestamp on the border, or `O` to open it in an external viewer.
 

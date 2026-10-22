@@ -11,6 +11,10 @@ type PhotoReadyMsg struct {
 	Image   image.Image
 }
 
+// inlineSixelTickMsg asks the model to paint the inline message images that the
+// last frame left dirty. It carries no payload: the frame itself is the state.
+type inlineSixelTickMsg struct{}
+
 // gifFileReadyMsg carries the temp-file path of a downloaded GIF (the full MP4),
 // ready to be decoded into frames.
 type gifFileReadyMsg struct {
@@ -72,6 +76,21 @@ type kittyTransmittedMsg struct {
 	photoID int64
 	cols    int
 }
+
+// sixelEncodedMsg carries a photo modal's image encoded as a sixel sequence.
+// key is the store key the encode was started for (photoPlayerKey for the
+// modal); cols/rows are the geometry it was encoded at, so a result that
+// outlived its box can be dropped instead of painted.
+type sixelEncodedMsg struct {
+	key  int64
+	cols int
+	rows int
+	seq  string
+}
+
+// sixelPaintMsg asks for the waiting sixel paint to run now that its frame is
+// on screen. gen drops ticks superseded by a newer image or geometry.
+type sixelPaintMsg struct{ gen uint64 }
 
 // voicePlayReadyMsg carries a downloaded voice file ready to be played.
 type voicePlayReadyMsg struct {

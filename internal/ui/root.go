@@ -178,22 +178,33 @@ type RootModel struct {
 	kittyLRU          []int64
 	kittyResetPending bool
 	kittyCap          int // max live placements; from config, 0 → default
-	searchModel       *screens.SearchModel
-	contextMenu       *components.ContextMenu
-	chatMenu          *components.ChatContextMenu
-	reactionPicker    *components.ReactionPicker
-	help              *components.HelpModal
-	settings          *components.SettingsModal
-	confirmQuit       *components.ConfirmModal
-	profile           *components.Profile
-	profileAsk        int // numbers profile requests; only the latest one's answer opens an overlay
-	openPicker        *components.OpenPicker
-	reactionTargetID  int
-	mentionPopup      *components.MentionPopup
-	mentionMembers    map[int64][]domain.ChatMember
-	folderBar         *screens.FoldersModel
-	logo              components.LogoLoader
-	typingSerial      int
+	// Sixel mode paints the photo modal out of band: sixelSeq is the encoded
+	// image for the modal currently open, sixelPaintGen invalidates paint ticks
+	// scheduled for a modal that has since changed (a repaint must not land
+	// under a different photo).
+	sixelSeq      string
+	sixelSeqCols  int
+	sixelSeqRows  int
+	sixelPaintGen uint64
+	// sixelInline carries the inline message images: the last frame, and what
+	// was painted over it. Shared by every copy of the model, like the caches.
+	sixelInline      *inlineSixelState
+	searchModel      *screens.SearchModel
+	contextMenu      *components.ContextMenu
+	chatMenu         *components.ChatContextMenu
+	reactionPicker   *components.ReactionPicker
+	help             *components.HelpModal
+	settings         *components.SettingsModal
+	confirmQuit      *components.ConfirmModal
+	profile          *components.Profile
+	profileAsk       int // numbers profile requests; only the latest one's answer opens an overlay
+	openPicker       *components.OpenPicker
+	reactionTargetID int
+	mentionPopup     *components.MentionPopup
+	mentionMembers   map[int64][]domain.ChatMember
+	folderBar        *screens.FoldersModel
+	logo             components.LogoLoader
+	typingSerial     int
 	// msgHighlightSerial guards the jump-to message-highlight fade loop so a
 	// newer highlight or a stale tick is ignored.
 	msgHighlightSerial int
@@ -268,6 +279,7 @@ func NewRootModel(verbose bool) RootModel {
 		kittyStore:     media.NewKittyStore(),
 		kittyLive:      make(map[int64]bool),
 		logo:           components.NewLogoLoader(80),
+		sixelInline:    newInlineSixelState(),
 	}
 }
 
@@ -339,8 +351,17 @@ func (m RootModel) debug(msg string, fields ...zap.Field) {
 // model is handed the same mode rather than reading the file again (#239).
 func (m RootModel) WithImageMode(mode media.Mode) RootModel {
 	m.imageMode = mode
-	if mode == media.ModeKitty {
+	switch mode {
+	case media.ModeKitty:
 		m.chat.SetRenderer(media.NewKittyRenderer(m.kittyStore))
+	case media.ModeSixel:
+		// Inline images keep their block art in the cells - the layout and the
+		// height accounting depend on it - and carry a marker the root model
+		// turns into an out-of-band paint.
+		m.chat.SetRenderer(media.NewSixelRenderer())
+	}
+	if m.sixelInline == nil {
+		m.sixelInline = newInlineSixelState()
 	}
 	m.chat.SetImageMode(mode)
 	return m
@@ -505,6 +526,11 @@ func (m RootModel) Init() tea.Cmd {
 	// and enables OS color-scheme reports (mode 2031) for event-driven theme
 	// updates (issue #148).
 	cmds := []tea.Cmd{requestBGColorCmd(), enableColorSchemeReportsCmd()}
+	if m.imageMode == media.ModeSixel {
+		// Only sixel needs the cell pixel size, and only a terminal that speaks
+		// sixel but not TIOCGWINSZ pixels (foot) has to be asked for it.
+		cmds = append(cmds, requestCellSizeCmd())
+	}
 	if m.screen == ScreenLogin {
 		cmds = append(cmds, screens.SlowConnectTick())
 	}
@@ -538,6 +564,14 @@ func (m RootModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	// visible/active while the loop was asleep (issue #147).
 	if acmd := (&rm).ensureAnimationTicks(); acmd != nil {
 		cmd = tea.Batch(cmd, acmd)
+	}
+	// Sixel mode paints inline images out of band, after the frame. Any event
+	// may have rewritten the cells under one, so ask for a paint after this one;
+	// the paint itself is the one event that must not ask again.
+	if _, isPaint := msg.(inlineSixelTickMsg); !isPaint {
+		if pcmd := rm.scheduleInlineSixelPaint(); pcmd != nil {
+			cmd = tea.Batch(cmd, pcmd)
+		}
 	}
 	return rm, cmd
 }
@@ -730,6 +764,9 @@ func (m RootModel) updateInner(msg tea.Msg) (tea.Model, tea.Cmd) {
 		FullPhotoReadyMsg,
 		kittyEncodedMsg,
 		kittyTransmittedMsg,
+		sixelEncodedMsg,
+		sixelPaintMsg,
+		inlineSixelTickMsg,
 		components.OpenInViewerRequest,
 		components.OpenExternalRequest,
 		components.DownloadFileRequest,
@@ -759,6 +796,7 @@ func (m RootModel) updateInner(msg tea.Msg) (tea.Model, tea.Cmd) {
 		tea.BlurMsg,
 		uv.DarkColorSchemeEvent,
 		uv.LightColorSchemeEvent,
+		uv.CellSizeEvent,
 		components.TypingDotsTickMsg,
 		clearTypingMsg,
 		msgHighlightFadeMsg,
