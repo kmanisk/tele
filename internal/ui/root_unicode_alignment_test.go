@@ -12,6 +12,7 @@ import (
 
 	"github.com/sorokin-vladimir/tele/internal/core/project"
 	"github.com/sorokin-vladimir/tele/internal/domain"
+	"github.com/sorokin-vladimir/tele/internal/ui/screens"
 )
 
 // A keycap starts with ASCII but occupies two grapheme cells. The old styled
@@ -87,4 +88,20 @@ func TestUnsupportedUnicodeModeDoesNotRequestRepaint(t *testing.T) {
 		require.Nil(t, cmd)
 		require.False(t, next.(RootModel).widthModeReported)
 	}
+}
+
+func TestViewReplacesNarrowJoinedSymbolsWithoutChangingChatData(t *testing.T) {
+	const title = "Team \U0001f441\u200d\U0001f5e8"
+	m := NewRootModel(false).WithScreen(ScreenMain)
+	m.chatList.SetWindow(0, 1, []project.ChatRow{{ID: 1, Title: title}})
+	m.chat.SetHeader(screens.ChatHeader{ChatID: 1, Title: title})
+	next, _ := m.Update(tea.WindowSizeMsg{Width: 120, Height: 30})
+	m = next.(RootModel)
+	content := ansi.Strip(m.View().Content)
+	require.Contains(t, content, "Team ?")
+	require.NotContains(t, content, "\U0001f441\u200d\U0001f5e8")
+	require.Equal(t, title, m.chat.HeaderTitle())
+	row, ok := m.chatList.ChatAtViewportRow(0)
+	require.True(t, ok)
+	require.Equal(t, title, row.Title)
 }

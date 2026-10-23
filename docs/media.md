@@ -30,6 +30,15 @@ keep their existing Kitty-only paths.
 Press `o` to open the full-quality image in an in-app modal viewer, with sender
 and timestamp on the border, or `O` to open it in an external viewer.
 
+## Terminal text alignment
+
+Joined symbols that the width library counts as one cell use `?` in the final
+view. Some terminals draw those symbols in two cells, shifting the rest of the
+row through pane borders and images. This display fallback preserves the
+measured width; stored names, message contents, and copied text are unchanged.
+Qualified two-cell symbols, keycaps, and ordinary text keep their glyphs.
+Other terminal width-policy differences may still require upstream corrections.
+
 ## Voice messages
 
 An amplitude waveform with duration, and in-app playback on `p` with an animated

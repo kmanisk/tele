@@ -13,6 +13,10 @@ Older releases are at <https://github.com/sorokin-vladimir/tele/releases>.
 
 ### Fixed
 
+- One-cell joined symbols use a display-only `?` fallback to prevent terminal
+  width disagreements from shifting pane borders and inline images. Original
+  names and message contents remain intact.
+
 - Long attachment labels, sender names, reaction rows, and file albums stay
   inside the message pane. Chat titles truncate on the same grapheme widths
   used by layout, including ASCII-based keycaps.

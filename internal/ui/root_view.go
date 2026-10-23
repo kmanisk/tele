@@ -192,6 +192,7 @@ func (m RootModel) View() tea.View {
 		content = m.noticeView(content)
 	}
 	content = m.fillCanvas(content)
+	content = layout.TerminalSafeText(content)
 	// Sixel mode: the frame carries invisible markers on every inline image
 	// row, and this is the only place that sees the assembled screen. Hand it to
 	// the inline painter; while an overlay covers the chat, drop the painted
