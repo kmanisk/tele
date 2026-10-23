@@ -7,6 +7,7 @@ import (
 
 	tea "charm.land/bubbletea/v2"
 	uv "github.com/charmbracelet/ultraviolet"
+	"github.com/charmbracelet/x/ansi"
 	"go.uber.org/zap"
 
 	"github.com/sorokin-vladimir/tele/internal/audio"
@@ -58,6 +59,9 @@ type RootModel struct {
 	keyMap    keys.KeyMap
 	matcher   *keys.Matcher
 	owner     Owner
+	// Width negotiation can finish after the first frame was painted.
+	widthModeReported bool
+	widthRepainted    bool
 	// chatListSub is the chatlist subscription; chatSub is the open chat's.
 	// Zero means not subscribed.
 	chatListSub project.SubID
@@ -586,6 +590,20 @@ func (m RootModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 func (m RootModel) updateInner(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch msg := msg.(type) {
+	case tea.ModeReportMsg:
+		if msg.Mode != ansi.ModeUnicodeCore || m.widthModeReported ||
+			(msg.Value != ansi.ModeReset && msg.Value != ansi.ModeSet && msg.Value != ansi.ModePermanentlySet) {
+			return m, nil
+		}
+		m.widthModeReported = true
+		// Bubble Tea switches its width method before forwarding this reply, but
+		// does not invalidate the previous frame. Clear first, then change the view
+		// identity so even an otherwise idle window flushes that pending erase.
+		return m, tea.Sequence(tea.ClearScreen, func() tea.Msg { return widthRepaintMsg{} })
+	case widthRepaintMsg:
+		m.widthRepainted = true
+		m.sixelInline.invalidatePaints()
+		return m, nil
 	case noticeTickMsg:
 		if !m.noticeActive() {
 			return m, nil

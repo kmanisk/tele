@@ -6,6 +6,9 @@ import (
 	"github.com/sorokin-vladimir/tele/internal/ui/components"
 )
 
+// widthRepaintMsg follows the renderer clear after Unicode width negotiation.
+type widthRepaintMsg struct{}
+
 type PhotoReadyMsg struct {
 	PhotoID int64
 	Image   image.Image

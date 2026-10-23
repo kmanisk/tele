@@ -204,6 +204,11 @@ func (m RootModel) View() tea.View {
 			m.sixelInline.record(strings.Split(content, "\n"))
 		}
 	}
+	if m.widthRepainted {
+		// A zero-width reset invalidates Bubble Tea's unchanged-view shortcut once.
+		// It remains constant after negotiation, so idle frames remain identical.
+		content = "\x1b[0m" + content
+	}
 	v := tea.NewView(content)
 	v.AltScreen = true
 	// Enable mouse reporting (clicks + wheel). CellMotion delivers button and

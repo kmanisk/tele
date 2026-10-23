@@ -13,6 +13,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
+	"github.com/sorokin-vladimir/tele/internal/core/project"
 	"github.com/sorokin-vladimir/tele/internal/domain"
 	"github.com/sorokin-vladimir/tele/internal/ui/media"
 	"github.com/sorokin-vladimir/tele/internal/ui/screens"
@@ -333,4 +334,53 @@ func TestInlineClearInvalidatesRendererWithUnchangedCells(t *testing.T) {
 	assert.NotEqual(t, before, after, "Bubble Tea must not skip its pending screen erase")
 	assert.Equal(t, xansi.Strip(before), xansi.Strip(after))
 	assert.Equal(t, after, m.View().Content, "idle views remain identical")
+}
+
+// The inline painter finds coordinates in the assembled ANSI frame. They must
+// agree with the cell grid Bubble Tea actually draws, including on a row with
+// an ASCII-based keycap in the chat list to the left of the image.
+func TestInlineImageCoordinatesMatchUnicodeFrameCells(t *testing.T) {
+	m := inlineModel(t).WithImageMode(media.ModeSixel)
+	m.folderBar.SetFolders([]domain.FolderFilter{{ID: 1, Title: "Folder"}})
+	rows := make([]project.ChatRow, 50)
+	for i := range rows {
+		rows[i] = project.ChatRow{ID: int64(i + 1), Title: "2\ufe0f\u20e3 Channel", Unread: 99}
+	}
+	m.chatList.SetWindow(0, len(rows), rows)
+	m.chat.SetHeader(screens.ChatHeader{ChatID: 1, Title: "Synthetic photo"})
+	m.chat.SetKnownImages(m.imageCache)
+	m.chat.SetMessages([]domain.Message{{ID: 1, ChatID: 1,
+		Media: &domain.MediaRef{Kind: domain.MediaPhoto}, Photo: &domain.PhotoRef{ID: 11}}})
+	next, _ := m.Update(tea.WindowSizeMsg{Width: 120, Height: 40})
+	m = next.(RootModel)
+	frame := m.View().Content
+	regions := inlineRegions(strings.Split(frame, "\n"))
+	require.NotEmpty(t, regions)
+	buf := uv.NewScreenBuffer(120, 40)
+	buf.Method = xansi.GraphemeWidth
+	uv.NewStyledString(frame).Draw(buf, uv.Rect(0, 0, 120, 40))
+	for _, r := range regions {
+		for y := r.row - 1; y < r.row-1+r.visible; y++ {
+			cell := buf.CellAt(r.col+r.ref.WinCols-2, y)
+			require.NotNil(t, cell)
+			require.NotEmpty(t, cell.Content)
+			require.Contains(t, "\u2580\u2584", cell.Content, "Sixel right edge differs from text image cells on row %d", y)
+		}
+	}
+}
+
+func TestWidthModeResetRejectsQueuedSixelWritesAndRepaints(t *testing.T) {
+	m := inlineModel(t)
+	m.sixelInline.record(inlineFrame())
+	m, encode := m.handleInlineSixelTick()
+	m, raw := finishInlinePaint(t, m, encode)
+	require.NotEmpty(t, fmt.Sprint(raw.Msg))
+	require.NotEmpty(t, m.sixelInline.painted)
+	// The frame's cells are unchanged; only width negotiation cleared it.
+	next, _ := m.updateInner(widthRepaintMsg{})
+	m = next.(RootModel)
+	require.Empty(t, m.sixelInline.painted)
+	require.Empty(t, fmt.Sprint(raw.Msg), "a queued write must not use the previous width grid")
+	_, repaint := m.handleInlineSixelTick()
+	require.NotNil(t, repaint, "graphics erased by the reset need a fresh paint")
 }

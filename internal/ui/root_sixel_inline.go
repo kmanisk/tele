@@ -102,6 +102,18 @@ func (s *inlineSixelState) forget() {
 	s.record(nil)
 }
 
+// invalidatePaints forgets graphics erased by a renderer width-mode reset and
+// rejects writes encoded against the previous cell grid.
+func (s *inlineSixelState) invalidatePaints() {
+	if s == nil {
+		return
+	}
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	s.revision++
+	clear(s.painted)
+}
+
 // clearPrefix changes the view identity after ClearScreen. Bubble Tea 2.0.6
 // otherwise skips its renderer flush when View.Content is unchanged, even
 // though ClearScreen has marked the terminal for erasure. The SGR reset has
