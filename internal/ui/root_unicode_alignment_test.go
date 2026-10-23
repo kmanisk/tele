@@ -57,3 +57,34 @@ func TestRenderedTitlePreservesASCIIBasedGraphemes(t *testing.T) {
 		require.Equal(t, "|", buf.CellAt(ansi.StringWidth(text), 0).Content)
 	}
 }
+
+func TestUnicodeModeReplyRepaintsAnOtherwiseUnchangedView(t *testing.T) {
+	m := NewRootModel(false).WithScreen(ScreenMain)
+	next, _ := m.Update(tea.WindowSizeMsg{Width: 120, Height: 30})
+	m = next.(RootModel)
+	before := m.View().Content
+	next, cmd := m.Update(tea.ModeReportMsg{Mode: ansi.ModeUnicodeCore, Value: ansi.ModeReset})
+	m = next.(RootModel)
+	require.NotNil(t, cmd)
+	require.Equal(t, before, m.View().Content, "wait for the clear before invalidating the frame")
+	next, _ = m.Update(widthRepaintMsg{})
+	m = next.(RootModel)
+	after := m.View().Content
+	require.NotEqual(t, before, after, "force a flush after the width method changes")
+	require.Equal(t, ansi.Strip(before), ansi.Strip(after), "redraw adds no visible cells")
+	require.Equal(t, after, m.View().Content, "idle frames stay identical")
+	_, cmd = m.Update(tea.ModeReportMsg{Mode: ansi.ModeUnicodeCore, Value: ansi.ModeReset})
+	require.Nil(t, cmd, "a repeated mode report must not clear the screen again")
+}
+
+func TestUnsupportedUnicodeModeDoesNotRequestRepaint(t *testing.T) {
+	for _, report := range []tea.ModeReportMsg{
+		{Mode: ansi.ModeUnicodeCore, Value: ansi.ModeNotRecognized},
+		{Mode: ansi.ModeSynchronizedOutput, Value: ansi.ModeReset},
+	} {
+		m := NewRootModel(false)
+		next, cmd := m.updateInner(report)
+		require.Nil(t, cmd)
+		require.False(t, next.(RootModel).widthModeReported)
+	}
+}
