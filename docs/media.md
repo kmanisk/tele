@@ -22,6 +22,15 @@ have changed their coordinates. Moving or removing placements invalidates the
 terminal once to clear pixels the text renderer cannot track. Album badges
 retain their text cells by cropping the image on the badge row.
 
+Window resizes invalidate painted placements even when their cell coordinates
+look unchanged. A short quiet period coalesces resize bursts before clearing
+and repainting; unchanged pixel encodings remain cached. Cell-size replies
+also refresh block-art geometry and message heights, so a font change cannot
+leave a stretched preview or stale scroll measurements. Palette construction is
+deterministic, preserving colors when a font change requires re-encoding. Photo
+modals also recompute their box on resize and reject writes queued before a
+resize or close, preventing oversized graphics from scrolling the terminal.
+
 Automatic detection also recognizes mlterm and WezTerm. Use `photos.mode:
 blocks` to force the universal fallback, or `photos.mode: sixel` to explicitly
 select a terminal with sixel support. Animated GIFs, video playback and avatars

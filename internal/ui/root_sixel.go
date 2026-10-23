@@ -80,6 +80,44 @@ func (m *RootModel) dropSixel() {
 	m.sixelSeqCols = 0
 	m.sixelSeqRows = 0
 	m.sixelPaintGen++
+	m.sixelInline.invalidatePaints()
+}
+
+// resizeSixelModal keeps the raster inside the current window. Encoding waits
+// for the latest resize tick; old ticks and already queued writes are rejected.
+func (m *RootModel) resizeSixelModal() tea.Cmd {
+	if m.imageMode != media.ModeSixel || m.photoViewer == nil {
+		return nil
+	}
+	pv := m.photoViewer
+	w, h := 4, 3
+	if pv.img != nil {
+		b := pv.img.Bounds()
+		w, h = b.Dx(), b.Dy()
+	}
+	cols, rows := m.modalImageBox(w, h, 0)
+	if cols == pv.cols && rows == pv.rows {
+		return m.scheduleSixelPaint()
+	}
+	pv.cols, pv.rows = cols, rows
+	m.dropSixel()
+	gen := m.sixelPaintGen
+	return tea.Tick(inlineResizeDelay, func(time.Time) tea.Msg { return sixelPaintMsg{gen: gen} })
+}
+
+type modalSixelWrite struct {
+	state    *inlineSixelState
+	revision uint64
+	seq      string
+}
+
+func (w modalSixelWrite) String() string {
+	w.state.mu.Lock()
+	defer w.state.mu.Unlock()
+	if w.revision != w.state.revision || w.state.clearPending || w.state.clearing {
+		return ""
+	}
+	return w.seq
 }
 
 // handleSixelEncoded stores a freshly encoded modal image and schedules its
@@ -110,6 +148,9 @@ func (m RootModel) handleSixelPaint(msg sixelPaintMsg) (RootModel, tea.Cmd) {
 	if msg.gen != m.sixelPaintGen || m.photoViewer == nil {
 		return m, nil
 	}
+	if m.sixelSeq == "" && m.photoViewer.img != nil {
+		return m, m.encodeSixelCmd(photoPlayerKey, m.photoViewer.img, m.photoViewer.cols, m.photoViewer.rows)
+	}
 	if m.sixelSeq == "" || m.sixelSeqCols != m.photoViewer.cols || m.sixelSeqRows != m.photoViewer.rows {
 		return m, nil
 	}
@@ -118,5 +159,8 @@ func (m RootModel) handleSixelPaint(msg sixelPaintMsg) (RootModel, tea.Cmd) {
 	if seq == "" {
 		return m, nil
 	}
-	return m, func() tea.Msg { return tea.Raw(seq)() }
+	m.sixelInline.mu.Lock()
+	revision := m.sixelInline.revision
+	m.sixelInline.mu.Unlock()
+	return m, tea.Raw(modalSixelWrite{state: m.sixelInline, revision: revision, seq: seq})
 }

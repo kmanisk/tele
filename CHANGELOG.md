@@ -13,6 +13,12 @@ Older releases are at <https://github.com/sorokin-vladimir/tele/releases>.
 
 ### Fixed
 
+- Sixel previews clear reflowed pixels and reject queued writes on terminal
+  resize, coalescing resize bursts while retaining reusable encodings. Cell-size
+  changes also invalidate cached block art and message heights. Re-encoding
+  the same image preserves its palette colors. Photo modals fit the resized
+  window and reject obsolete queued raster writes.
+
 - One-cell joined symbols use a display-only `?` fallback to prevent terminal
   width disagreements from shifting pane borders and inline images. Original
   names and message contents remain intact.

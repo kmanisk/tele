@@ -353,6 +353,12 @@ func quantizeSixel(img *image.RGBA, maxColors int) ([]sixelColor, []uint8) {
 	for _, e := range hist {
 		entries = append(entries, *e)
 	}
+	// Map iteration must not choose different median-cut ties after a resize
+	// invalidates the encoding cache. Start every split from the same ordering.
+	sort.Slice(entries, func(i, j int) bool {
+		a, b := entries[i], entries[j]
+		return a.r5<<10|a.g5<<5|a.b5 < b.r5<<10|b.g5<<5|b.b5
+	})
 
 	boxes := []*paletteBox{newPaletteBox(entries)}
 	for len(boxes) < maxColors {

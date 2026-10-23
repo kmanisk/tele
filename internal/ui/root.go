@@ -578,7 +578,11 @@ func (m RootModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	// the paint itself is the one event that must not ask again.
 	_, isPaint := msg.(inlineSixelTickMsg)
 	if encoded, ok := msg.(inlineSixelEncodedMsg); ok && encoded.seq == "" {
-		isPaint = true // An encode failure must not create an idle retry loop.
+		encoded.state.mu.Lock()
+		// A genuine failure must not create an idle loop. A cancelled old
+		// viewport still owes the current frame a paint after its worker exits.
+		isPaint = encoded.state == rm.sixelInline && encoded.revision == encoded.state.revision
+		encoded.state.mu.Unlock()
 	}
 	if !isPaint {
 		if pcmd := rm.scheduleInlineSixelPaint(); pcmd != nil {

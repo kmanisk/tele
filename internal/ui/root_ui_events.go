@@ -45,14 +45,18 @@ func (m RootModel) updateUIMsg(msg tea.Msg) (RootModel, tea.Cmd) {
 		if !media.SetCellPx(float64(msg.Width), float64(msg.Height)) {
 			return m, nil
 		}
+		m.chat.InvalidateMediaGeometry()
 		// Encoded crops use pixel dimensions; cell geometry alone is insufficient
 		// after a font-size change, including when the cell count stays the same.
+		m.sixelInline.invalidatePaints()
 		m.sixelInline.forget() // Invalidate raw writes queued on the old state.
 		m.sixelInline = newInlineSixelState()
 		m.sixelInline.clearPending = m.imageMode == media.ModeSixel
 		// An open modal encoded before this reply was sized from the fallback
 		// cell, so encode it again against the real one.
 		if m.photoViewer != nil && m.photoViewer.img != nil {
+			b := m.photoViewer.img.Bounds()
+			m.photoViewer.cols, m.photoViewer.rows = m.modalImageBox(b.Dx(), b.Dy(), 0)
 			m.dropSixel()
 			return m, m.encodeSixelCmd(photoPlayerKey, m.photoViewer.img,
 				m.photoViewer.cols, m.photoViewer.rows)
@@ -68,6 +72,9 @@ func (m RootModel) updateUIMsg(msg tea.Msg) (RootModel, tea.Cmd) {
 		return m, nil
 
 	case tea.WindowSizeMsg:
+		if m.imageMode == media.ModeSixel {
+			m.sixelInline.resized(m.photoViewer != nil)
+		}
 		m.width = msg.Width
 		m.height = msg.Height
 		m.logo.SetWidth(msg.Width)
@@ -107,7 +114,7 @@ func (m RootModel) updateUIMsg(msg tea.Msg) (RootModel, tea.Cmd) {
 		// A resized window moves a centered modal, so a sixel painted before
 		// the resize is now in the wrong place - and the full repaint a resize
 		// forces has just erased it anyway.
-		sixelCmd := m.scheduleSixelPaint()
+		sixelCmd := m.resizeSixelModal()
 		var cellSizeCmd tea.Cmd
 		if m.imageMode == media.ModeSixel {
 			cellSizeCmd = requestCellSizeCmd()

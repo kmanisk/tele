@@ -38,6 +38,10 @@ import (
 // enough to be invisible.
 const inlinePaintDelay = 30 * time.Millisecond
 
+// A resize burst should encode and paint its final grid, not every intermediate
+// scratchpad/fullscreen geometry. Ordinary scrolling keeps the shorter delay.
+const inlineResizeDelay = 90 * time.Millisecond
+
 // inlineSeqCacheSize bounds the encoded sequences kept between repaints. A
 // scrolled chat repaints the same crops over and over, and encoding one is the
 // expensive part; the sequences themselves are a few hundred kilobytes at most.
@@ -53,6 +57,8 @@ type inlineSixelState struct {
 	order         []string
 	revision      uint64
 	pending       bool
+	tickPending   bool
+	resizeUntil   time.Time
 	clearPending  bool
 	clearing      bool
 	clearRevision uint64
@@ -111,6 +117,23 @@ func (s *inlineSixelState) invalidatePaints() {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	s.revision++
+	clear(s.painted)
+}
+
+// resized invalidates pixels independently of frame identity. The terminal
+// can erase or reflow a raster even if its image markers and text stay equal.
+// Pixel encodings remain reusable when only the window, not the font, changes.
+func (s *inlineSixelState) resized(hasModal bool) {
+	if s == nil {
+		return
+	}
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	s.revision++
+	if hasModal || len(s.painted) > 0 || len(inlineRegions(s.frame)) > 0 {
+		s.clearPending = true
+		s.resizeUntil = time.Now().Add(inlineResizeDelay)
+	}
 	clear(s.painted)
 }
 
@@ -276,7 +299,15 @@ func (m RootModel) scheduleInlineSixelPaint() tea.Cmd {
 	if m.imageMode != media.ModeSixel || m.sixelInline == nil {
 		return nil
 	}
-	return tea.Tick(inlinePaintDelay, func(time.Time) tea.Msg { return inlineSixelTickMsg{} })
+	s := m.sixelInline
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	if s.tickPending {
+		return nil
+	}
+	s.tickPending = true
+	delay := max(inlinePaintDelay, time.Until(s.resizeUntil))
+	return tea.Tick(delay, func(time.Time) tea.Msg { return inlineSixelTickMsg{} })
 }
 
 // inlinePaintOp is one image to encode and paint.
@@ -361,9 +392,15 @@ func (m RootModel) handleInlineSixelTick() (RootModel, tea.Cmd) {
 		return m, nil
 	}
 	state.mu.Lock()
+	state.tickPending = false
 	if state.clearing {
 		state.mu.Unlock()
 		return m, nil
+	}
+	if delay := time.Until(state.resizeUntil); delay > 0 {
+		state.tickPending = true
+		state.mu.Unlock()
+		return m, tea.Tick(delay, func(time.Time) tea.Msg { return inlineSixelTickMsg{} })
 	}
 	if state.clearPending {
 		state.clearing = true
@@ -388,6 +425,12 @@ func (m RootModel) handleInlineSixelTick() (RootModel, tea.Cmd) {
 		var sb strings.Builder
 		var painted []inlineRegion
 		for _, op := range ops {
+			state.mu.Lock()
+			stale := revision != state.revision
+			state.mu.Unlock()
+			if stale {
+				break // Do not encode the rest of an obsolete viewport.
+			}
 			seq := op.seq
 			if seq == "" {
 				encoded, err := media.SixelRegionSeq(op.img, op.region.ref, op.region.skipTop, op.region.visible)
@@ -422,6 +465,7 @@ func (m RootModel) handleInlineSixelEncoded(msg inlineSixelEncodedMsg) (RootMode
 
 func (m RootModel) handleInlineSixelCleared(msg inlineSixelClearedMsg) (RootModel, tea.Cmd) {
 	msg.state.mu.Lock()
+	msg.state.revision++
 	msg.state.painted = map[string]uint64{}
 	msg.state.clearPending = false
 	msg.state.clearing = false

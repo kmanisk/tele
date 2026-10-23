@@ -1,6 +1,7 @@
 package ui
 
 import (
+	"fmt"
 	"strings"
 	"testing"
 	"time"
@@ -89,7 +90,7 @@ func TestOpenPhotoModal_SixelEncodesAtBoxSize(t *testing.T) {
 	raw, ok := runSixelCmd(t, rawCmd).(tea.RawMsg)
 	require.True(t, ok)
 	row, col := m4.photoModalOrigin()
-	assert.Contains(t, raw.Msg.(string), media.PositionSixel(row, col, enc.seq))
+	assert.Contains(t, fmt.Sprint(raw.Msg), media.PositionSixel(row, col, enc.seq))
 }
 
 func TestSixelPaint_DropsStaleGeometry(t *testing.T) {
@@ -191,8 +192,10 @@ func TestCellSizeEventReencodesOpenModal(t *testing.T) {
 
 	enc, ok := runSixelCmd(t, cmd).(sixelEncodedMsg)
 	require.True(t, ok)
-	assert.Equal(t, 20, enc.cols)
-	assert.Equal(t, 8, enc.rows)
+	assert.Equal(t, m2.photoViewer.cols, enc.cols)
+	assert.Equal(t, m2.photoViewer.rows, enc.rows)
+	assert.LessOrEqual(t, enc.cols+2, m2.width)
+	assert.LessOrEqual(t, enc.rows+2, m2.height)
 	assert.NotEmpty(t, enc.seq)
 
 	// The same report twice is not a change, so it does not churn the encoder.
