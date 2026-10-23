@@ -9,6 +9,7 @@ func TruncateText(text string, width int) string {
 	if width <= 0 {
 		return ""
 	}
+	text = PresentationText(text)
 	if ansi.StringWidth(text) <= width {
 		return text
 	}

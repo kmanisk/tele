@@ -46,6 +46,12 @@ view. Some terminals draw those symbols in two cells, shifting the rest of the
 row through pane borders and images. This display fallback preserves the
 measured width; stored names, message contents, and copied text are unchanged.
 Qualified two-cell symbols, keycaps, and ordinary text keep their glyphs.
+Narrow consonant conjuncts containing a virama use explicit non-joining
+presentation before truncation and wrapping. Foot advances one cell per
+consonant where the width library can count the whole conjunct as one. A
+zero-width non-joiner preserves the letters while making both widths agree;
+conjunct ligatures may therefore look different. Stored text, entity offsets,
+and hyperlink targets remain unchanged.
 Other terminal width-policy differences may still require upstream corrections.
 
 ## Voice messages

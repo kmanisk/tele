@@ -13,6 +13,10 @@ Older releases are at <https://github.com/sorokin-vladimir/tele/releases>.
 
 ### Fixed
 
+- Narrow virama conjuncts in titles and messages use non-joining display forms
+  before layout, preventing a Foot cell-width mismatch from shifting borders
+  during sidebar updates and resizing. Original text and link targets are kept.
+
 - Sixel previews clear reflowed pixels and reject queued writes on terminal
   resize, coalescing resize bursts while retaining reusable encodings. Cell-size
   changes also invalidate cached block art and message heights. Re-encoding
