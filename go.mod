@@ -7,7 +7,7 @@ require (
 	charm.land/bubbletea/v2 v2.0.6
 	charm.land/lipgloss/v2 v2.0.3
 	github.com/atotto/clipboard v0.1.4
-	github.com/charmbracelet/ultraviolet v0.0.0-20260416155717-489999b90468
+	github.com/charmbracelet/ultraviolet v0.0.0-20260808192814-d38ea0f8aa5c
 	github.com/charmbracelet/x/ansi v0.11.7
 	github.com/charmbracelet/x/term v0.2.2
 	github.com/ebitengine/oto/v3 v3.4.0
