@@ -11,6 +11,14 @@ Older releases are at <https://github.com/sorokin-vladimir/tele/releases>.
 
 ## [Unreleased]
 
+### Added
+
+- Sixel photo modals and inline previews, including clipped images and albums,
+  with automatic terminal detection and block-art fallback. Repeated image
+  placements stay separate, and malformed inline metadata is ignored safely.
+  Album badges crop only the covered cells; stale encodes and queued writes
+  are rejected after viewport changes, and removed images leave no pixels behind.
+
 ### Fixed
 
 - Narrow virama conjuncts in titles and messages use non-joining display forms
@@ -51,12 +59,6 @@ Older releases are at <https://github.com/sorokin-vladimir/tele/releases>.
   starting 2.0.
 
 ### Added
-
-- Sixel photo modals and inline previews, including clipped images and albums,
-  with automatic terminal detection and block-art fallback. Repeated image
-  placements stay separate, and malformed inline metadata is ignored safely.
-  Album badges crop only the covered cells; stale encodes and queued writes
-  are rejected after viewport changes, and removed images leave no pixels behind.
 
 - `tele daemon` holds the account with no window: it keeps the connection and
   delivers desktop notifications, and windows join it as they would join any
