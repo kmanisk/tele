@@ -221,3 +221,18 @@ func TestSixelMessagesAreRouted(t *testing.T) {
 	m = next.(RootModel)
 	require.NotNil(t, cmd, "paint message produced a command")
 }
+
+func TestWidthModeResetRepaintsOpenSixelModal(t *testing.T) {
+	m := newSizedModel(t).WithImageMode(media.ModeSixel)
+	m.photoViewer = &photoViewer{cols: 20, rows: 8}
+	m.sixelSeq, m.sixelSeqCols, m.sixelSeqRows = "SEQ", 20, 8
+	old := sixelPaintMsg{gen: m.sixelPaintGen}
+	next, cmd := m.updateInner(widthRepaintMsg{})
+	m = next.(RootModel)
+	require.NotNil(t, cmd, "the width-mode clear erased the modal graphics too")
+	tick := runSixelCmd(t, cmd).(sixelPaintMsg)
+	_, stale := m.handleSixelPaint(old)
+	require.Nil(t, stale)
+	_, paint := m.handleSixelPaint(tick)
+	require.NotNil(t, paint)
+}

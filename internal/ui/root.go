@@ -603,7 +603,7 @@ func (m RootModel) updateInner(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case widthRepaintMsg:
 		m.widthRepainted = true
 		m.sixelInline.invalidatePaints()
-		return m, nil
+		return m, m.scheduleSixelPaint()
 	case noticeTickMsg:
 		if !m.noticeActive() {
 			return m, nil
