@@ -13,6 +13,10 @@ Older releases are at <https://github.com/sorokin-vladimir/tele/releases>.
 
 ### Fixed
 
+- Long attachment labels, sender names, reaction rows, and file albums stay
+  inside the message pane. Chat titles truncate on the same grapheme widths
+  used by layout, including ASCII-based keycaps.
+
 - Keycap characters in chat or folder names keep their combining marks and
   cell width, so the adjacent pane border stays in its column. The renderer
   dependency also fixes dropped rows and cursor drift when resizing a window.
