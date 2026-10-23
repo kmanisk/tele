@@ -16,6 +16,7 @@ Older releases are at <https://github.com/sorokin-vladimir/tele/releases>.
 - Keycap characters in chat or folder names keep their combining marks and
   cell width, so the adjacent pane border stays in its column. The renderer
   dependency also fixes dropped rows and cursor drift when resizing a window.
+  Terminal windows redraw once after Unicode width negotiation, even when idle.
 
 ## [2.0.0] - 2026-10-23 — One tele for the account, and a service to keep it
 
