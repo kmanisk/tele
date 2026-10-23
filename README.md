@@ -10,6 +10,8 @@
 
 > A terminal-native Telegram client built for keyboard-driven workflows.
 
+<p align="center"><a href="README.ru.md">🇷🇺 Русский</a> · <a href="README.zh-CN.md">🇨🇳 简体中文</a></p>
+
 [![Go](https://img.shields.io/badge/go-1.26+-blue)](https://go.dev)
 [![License](https://img.shields.io/badge/license-GPL--3.0-green)](LICENSE)
 [![Release](https://img.shields.io/github/v/release/sorokin-vladimir/tele)](https://github.com/sorokin-vladimir/tele/releases)
@@ -32,7 +34,7 @@
 
 ![tele demo](./assets/demo.gif)
 
-> **Status:** Active development - already usable for daily messaging (private chats, groups, replies, reactions, forwarding, drafts). Some Telegram features are still in progress.
+> **Status:** A full Telegram client for the terminal, used every day by its author: chats, groups, channels and forums, media, reactions, folders, and notifications that arrive with no window open. What it does not do yet is on the [roadmap](#roadmap).
 
 ---
 
@@ -40,7 +42,7 @@
 
 Telegram Desktop, the web client, and mobile apps are designed around mouse-first interaction.
 
-If you live in the terminal - using tools like Neovim, yazi, k9s, or tmux - switching to a GUI messenger breaks your flow.
+If you live in the terminal, using tools like Neovim, yazi, k9s, or tmux, switching to a GUI messenger breaks your flow.
 
 `tele` keeps you in the terminal.
 
@@ -53,13 +55,13 @@ It is built for:
 
 If tools like lazygit feel natural to you, `tele` will too.
 
-It also runs lean - typically ~50MB RSS at idle vs several hundred MB for desktop clients.
+It also runs lean: typically ~50MB RSS at idle vs several hundred MB for desktop clients.
 
 ---
 
 ## Compared to other terminal clients
 
-Nearly every terminal Telegram client is built on TDLib, Telegram's C++ library -
+Nearly every terminal Telegram client is built on TDLib, Telegram's C++ library,
 either linked directly or through a Python runtime. `tele` speaks MTProto itself
 via [gotd/td](https://github.com/gotd/td) and builds without cgo, so there is no
 C++ library to download or compile, no interpreter to keep on your machine, and
@@ -68,26 +70,27 @@ no chain of optional helper programs to install before the app is fully usable.
 |                  | `tele`                                                           | [tgt](https://github.com/FedericoBruzzone/tgt)                                                                  | [tg](https://github.com/paul-nameless/tg) · [tuigram](https://codeberg.org/Yehoslav/tuigram)                              |
 | ---------------- | ---------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------- |
 | Language         | Go                                                               | Rust                                                                                                            | Python                                                                                                                    |
-| Telegram backend | gotd/td - MTProto in pure Go                                     | TDLib                                                                                                           | TDLib via `python-telegram`                                                                                               |
+| Telegram backend | gotd/td, MTProto in pure Go                                      | TDLib                                                                                                           | TDLib via `python-telegram`                                                                                               |
 | What you install | one static binary                                                | `cargo install` plus TDLib downloaded or built; CMake to get voice notes; a system `chafa` to get inline images | a Python 3.9+/3.10+ runtime plus TDLib; `ffmpeg`, `terminal-notifier`, `urlview`, `ranger`/`fzf` for the full feature set |
 | Packaging        | brew, apt, dnf, zypper, apk, nix, scoop, winget, signed deb/rpm  | crates.io, AUR, nix, Docker                                                                                     | PyPI, AUR, Docker                                                                                                         |
 | Inline photos    | Kitty graphics protocol at full quality, ANSI block-art fallback | `chafa` block art, behind an optional build feature                                                             | handed to an external viewer via mailcap                                                                                  |
 | Windows          | binary, Scoop, winget                                            | supported                                                                                                       | not practical                                                                                                             |
+| With no window   | a service from login; notifications with no window open          | runs only while its terminal is open; no desktop notifications listed                                           | runs only while its terminal is open; notifies through an external command (`terminal-notifier`, `dunst`)                 |
 | Release cadence  | weekly stable releases plus a separate beta channel              | latest release is `v1.0.0-rc1`; most recent commits are dependency bumps                                        | `tg` ships in bursts months apart; `tuigram` is a fork of a fork                                                          |
 
 Beyond packaging, `tele` covers parts of modern Telegram that none of the three
-list as supported: **reactions**, **chat folders**, **grouped album sending**,
-and inline previews for **video, round notes (кружки) and GIFs**. Voice notes
-play **inside** the app with a waveform and a moving playhead - no external
-player, and no CMake step to build an Opus decoder. Chats open instantly from a
+list as supported: reactions, chat folders, grouped album sending, and inline
+previews for video, round notes (кружки) and GIFs. Voice notes play inside the
+app with a waveform and a moving playhead, with no external player and no CMake
+step to build an Opus decoder. Chats open instantly from a
 local SQLite history, themes come as eight built-in palettes that switch between
 a dark and a light one as your terminal background changes (with
 `tele theme check` to validate contrast), and every key is rebindable per context,
 chords included.
 
-Where they are ahead, honestly: `tg` and `tuigram` can **record** voice messages
-(via `ffmpeg`) and support **secret chats** - the first is out of scope for
-`tele` ([why](docs/media.md#recording-is-out-of-scope)), the second is on the
+Where they are ahead: `tg` and `tuigram` can record voice messages (via
+`ffmpeg`) and support secret chats. The first is out of scope for `tele`
+([why](docs/media.md#recording-is-out-of-scope)), the second is on the
 [backlog](https://github.com/sorokin-vladimir/tele/issues/234). Full-text
 message search is also still ahead on the [roadmap](#roadmap).
 
@@ -99,37 +102,44 @@ deprecated, last touched in 2022), `arigram` (archived), `tg-tui` (2018),
 
 ## Features
 
-- **Keyboard-first UX** - vim-inspired navigation (`gg/G`, insert mode), plus a
+- **Keyboard-first UX**: vim-inspired navigation (`gg/G`, insert mode), plus a
   movable per-message cursor (`j/k`) that steps bubble-by-bubble and is the
   target for the context menu and per-message actions. Mouse support is
   optional: click a chat or a pane, scroll with the wheel.
-- **Full Telegram support** - private chats, groups, channels, forum topics,
+- **Notifications with no window open**: `tele daemon install` keeps `tele`
+  running from login (launchd, a systemd user unit or Task Scheduler), so the
+  account stays connected and desktop notifications keep coming after you close
+  the window. Open `tele` again and it joins the running one instead of
+  connecting a second time; open it in two terminals and both show the same
+  account: [docs/configuration.md](docs/configuration.md#running-without-a-window)
+- **Full Telegram support**: private chats, groups, channels, forum topics,
   replies, reactions, edits, forwarding, and per-chat drafts synced with
   Telegram.
-- **Photos inline** - full quality via the Kitty graphics protocol in kitty,
+- **Photos inline**: full quality via the Kitty graphics protocol in kitty,
   Ghostty and iTerm2 3.7.0+, ANSI block art everywhere else. `o` opens the image
   in an in-app viewer.
-- **Voice messages** - waveform with duration and in-app playback (`p`) with a
+- **Voice messages**: waveform with duration and in-app playback (`p`) with a
   moving playhead. No external player, no cgo.
-- **Video, round notes (кружки) and GIFs** - inline thumbnails, with the
+- **Video, round notes (кружки) and GIFs**: inline thumbnails, with the
   selected GIF looping in place.
-- **Sending media** - attach a file with `u`; press it again to stage more and
+- **Sending media**: attach a file with `u`; press it again to stage more and
   send them as one grouped album.
-- **Proxies, as in the official clients** - an MTProto proxy (server, port and
+- **Proxies, as in the official clients**: an MTProto proxy (server, port and
   the secret a `tg://proxy` link carries, fake-TLS included) or a SOCKS5 one,
   set in the config for `tele` alone rather than for your whole shell, and used
   by every connection, downloads included:
   [docs/configuration.md](docs/configuration.md#proxy)
-- **Terminal-native design** - built for terminal workflows, not adapted from a
-  GUI client. Single static Go binary, fast startup, low memory.
-- **Simple configuration** - one YAML file with sensible defaults, and a
+- **Terminal-native design**: written for terminal workflows from the start
+  rather than adapted from a GUI client. Single static Go binary, fast startup,
+  low memory.
+- **Simple configuration**: one YAML file with sensible defaults, and a
   settings overlay on `,` that edits the same file, comments and all.
 
 > **Recording is out of scope.** `tele` can _send_ a pre-recorded audio or video
-> file, but it cannot **record** voice messages or round videos (кружки), and it
+> file, but it cannot record voice messages or round videos (кружки), and it
 > does not do voice or video calls: as a terminal-native, cgo-free client it has
-> no microphone or camera capture stack. This is an architectural boundary, not
-> a missing feature on the roadmap.
+> no microphone or camera capture stack. This is an architectural boundary, and
+> the roadmap does not plan for it.
 
 Details on every media type, in-app playback and the optional `ffmpeg`
 dependency: [docs/media.md](docs/media.md)
@@ -156,9 +166,9 @@ curl -sL .../install.sh | sh -s -- --version v1.9.0
 curl -sL .../install.sh | PREFIX="$HOME/.local/bin" sh
 ```
 
-**BSD note:** desktop notifications on FreeBSD use the terminal-native path
-(supported terminals only); audio playback needs a running PulseAudio/PipeWire
-server. Both degrade gracefully when unavailable.
+On FreeBSD, desktop notifications go through the terminal (supported terminals
+only), and audio playback needs a running PulseAudio/PipeWire server. Without
+them, that feature turns itself off without an error.
 
 ### macOS / Linux - Homebrew
 
@@ -181,7 +191,7 @@ two differ in one way worth knowing about, described under [App key](#app-key).
 
 ### macOS / Linux - Homebrew (beta channel)
 
-Want the latest merged changes ahead of the weekly stable release? Install the
+For the latest merged changes ahead of the weekly stable release, install the
 beta package from the same tap. It ships as a separate `tele-beta` binary with
 its own config and state (`~/.config/tele-beta`), so it lives alongside a stable
 install:
@@ -234,10 +244,10 @@ echo 'https://alpine.fury.io/sorokin-vladimir/' | sudo tee -a /etc/apk/repositor
 sudo apk add --allow-untrusted tele
 ```
 
-> Prefer a raw package? Signed `.deb` and `.rpm` files are also attached to
-> every [release](https://github.com/sorokin-vladimir/tele/releases/latest).
+> Signed `.deb` and `.rpm` files are also attached to every
+> [release](https://github.com/sorokin-vladimir/tele/releases/latest).
 
-> **Coming soon:** AUR and Snap packages are planned but not published yet.
+> AUR and Snap packages are planned but not published yet.
 
 ### Windows - binary
 
@@ -254,17 +264,16 @@ Invoke-WebRequest `
 For arm64: replace `amd64` with `arm64`. Add `$dir` to your `PATH` (or run
 `tele.exe` by full path) and launch it from any terminal. Photos are ANSI block
 art there: inline images need a terminal that draws Kitty images through Unicode
-placeholder cells, and no Windows terminal does that yet -
+placeholder cells, and no Windows terminal does that yet.
 [WezTerm](https://wezterm.org) has the Kitty graphics protocol but not the
 placeholders ([wezterm#7924](https://github.com/wezterm/wezterm/pull/7924)).
 Once a terminal gains them, `photos.mode: kitty` turns inline images on before
 auto-detection learns to recognize it.
 
-> Prefer a packaged install? A `.zip` containing `tele.exe`
-> (`tele_windows_amd64.zip`) is attached to every [release](https://github.com/sorokin-vladimir/tele/releases/latest).
+> A `.zip` containing `tele.exe` (`tele_windows_amd64.zip`) is attached to
+> every [release](https://github.com/sorokin-vladimir/tele/releases/latest).
 
-> Prefer a package manager? Install with
-> [Scoop](https://scoop.sh) or [winget](https://learn.microsoft.com/windows/package-manager/):
+> With a package manager: [Scoop](https://scoop.sh) or [winget](https://learn.microsoft.com/windows/package-manager/):
 >
 > ```powershell
 > scoop bucket add tele https://github.com/sorokin-vladimir/scoop-tele
@@ -332,14 +341,36 @@ Then prompts for:
 - SMS code
 - optional 2FA password
 
+Once you are logged in, `tele` asks once whether to keep running in the
+background as a service. Say `y` and the account stays connected after you
+close the window, with notifications still arriving; say `n` or press Esc and
+`tele` runs only while a window is open, as before. You can change your mind
+later with `tele daemon install` or `tele daemon uninstall`. The question is not
+asked where a service cannot be installed, or when one already is.
+
+### Upgrading from 1.11
+
+- Opening `tele` while another is running no longer fails: the second one
+  joins the first as another window on the same account.
+- After you log in, `tele` asks once about running as a service, as described
+  above.
+- Flags take two dashes now (`--config`, `--debug`); the short `-e` still
+  works.
+  The version and the theme tools became commands: `tele version`,
+  `tele theme check`, `tele theme dump`.
+- 1.11 and 2.0 cannot use the same account at the same time: quit 1.11 before
+  starting 2.0.
+
+Everything that changed: [CHANGELOG.md](CHANGELOG.md)
+
 ### App key
 
 `tele` reaches Telegram with an app key: an `api_id` and `api_hash` pair that
-identifies the application rather than you. There is nothing to do about it -
+identifies the application rather than you. There is nothing to do about it:
 every build carries one, and the login above works as it stands.
 
-Builds compiled from published source - homebrew-core, the Nix flake, a BSD
-port, your own `go build` - share a single key. Telegram can refuse a key it
+Builds compiled from published source (homebrew-core, the Nix flake, a BSD
+port, your own `go build`) share a single key. Telegram can refuse a key it
 considers too widely shared, and then `tele` says `app key blocked by Telegram`
 rather than claiming you were logged out. Two ways past it, take whichever is
 less trouble.
@@ -459,7 +490,7 @@ Every other key, and what each one does:
 background changes: `ui.theme.dark` and `ui.theme.light`. Leave `ui.theme` out
 and you get the built-in `tele-dark` and `tele-light`.
 
-Eight ready-made themes ship inside the binary - Catppuccin Macchiato, Dracula,
+Eight ready-made themes ship inside the binary: Catppuccin Macchiato, Dracula,
 Gruvbox Dark, Nord, Tokyo Night (Night, Moon and Day) and Seoul256 Light. There
 is nothing to install and nothing to copy: name one and it is there.
 
@@ -494,10 +525,10 @@ minor lines (`v1.11`, `v2.0`, …); patch releases ship incrementally within a l
 
 | Release             | Focus                                                                                                                                                                                                                                    |
 | ------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `v1.11` _(done)_    | Settings & people - in-app settings overlay, user profile overlay, avatars, themes shipped inside the binary, plus the distribution and audit gaps left behind                                                                            |
-| `v2.0` _(done)_     | Single owner of the Telegram connection - windows that join one `tele`, a service that keeps it running at login, notifications with no window open, one budget for calls to Telegram                                                    |
-| `v2.1`              | Scripting - commands that list chats and topics, read a chat and send to it, with JSON output; then rich messages                                                                                                                        |
-| `Backlog`           | Power-user & platform - search (full-text history, command palette, in-chat grep), voice and round-video messages, scheduled sending, bot commands & inline keyboards, secret chats, polls, extended vim motions, notification click routing |
+| `v1.11` _(done)_    | Settings & people: in-app settings overlay, user profile overlay, avatars, themes shipped inside the binary, plus the distribution and audit gaps left behind                                                                            |
+| `v2.0` _(done)_     | Single owner of the Telegram connection: windows that join one `tele`, a service that keeps it running at login, notifications with no window open, one budget for calls to Telegram                                                    |
+| `v2.1`              | Scripting: commands that list chats and topics, read a chat and send to it, with JSON output; then rich messages                                                                                                                        |
+| `Backlog`           | Power-user & platform: search (full-text history, command palette, in-chat grep), voice and round-video messages, scheduled sending, bot commands & inline keyboards, secret chats, polls, extended vim motions, notification click routing |
 
 Work is also categorized by theme (Security & Reliability, Architecture & Performance,
 Feature Completeness, Power User & Polish) via the board's **Theme** field.
@@ -522,21 +553,21 @@ Building with your own app key, the `nix develop` shell and the flake's
 
 ## Documentation
 
-- [Commands](docs/commands.md) - every command and its flags
-- [Command line](docs/cli.md) - what commands exit with, their JSON, and how they are named
-- [Configuration](docs/configuration.md) - the config file, the settings overlay, notifications, photo and avatar caches
-- [Keybindings](docs/keybindings.md) - every key by context, and how to rebind them
-- [Themes](docs/themes.md) - theme slots, writing your own, every color token
-- [Media](docs/media.md) - inline photos, voice playback, video, GIFs, sending files
-- [App key](docs/app-key.md) - what it is, and what to do when Telegram blocks it
-- [Development](docs/development.md) - building from source, the Nix flake
-- [Contributing](.github/CONTRIBUTING.md) - how to propose a change
+- [Commands](docs/commands.md): every command and its flags
+- [Command line](docs/cli.md): what commands exit with, their JSON, and how they are named
+- [Configuration](docs/configuration.md): the config file, the settings overlay, notifications, photo and avatar caches
+- [Keybindings](docs/keybindings.md): every key by context, and how to rebind them
+- [Themes](docs/themes.md): theme slots, writing your own, every color token
+- [Media](docs/media.md): inline photos, voice playback, video, GIFs, sending files
+- [App key](docs/app-key.md): what it is, and what to do when Telegram blocks it
+- [Development](docs/development.md): building from source, the Nix flake
+- [Contributing](.github/CONTRIBUTING.md): how to propose a change
 
 ---
 
 ## License
 
-GPL-3.0 - free to use and fork; derivative works must remain open-source.
+GPL-3.0: free to use and fork; derivative works must remain open-source.
 
 ---
 

@@ -1,13 +1,13 @@
 # App key
 
 `tele` reaches Telegram with an app key: an `api_id` and `api_hash` pair that
-identifies the application rather than you. There is nothing to do about it -
+identifies the application rather than you. There is nothing to do about it:
 every build carries one, and logging in works as it stands.
 
 ## When Telegram refuses the key
 
-Builds compiled from published source - homebrew-core, the Nix flake, a BSD
-port, your own `go build` - share a single key between everyone who builds
+Builds compiled from published source (homebrew-core, the Nix flake, a BSD
+port, your own `go build`) share a single key between everyone who builds
 `tele` that way. Telegram can refuse a key it considers too widely shared. If it
 does, `tele` says `app key blocked by Telegram` rather than claiming you were
 logged out.

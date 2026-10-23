@@ -62,7 +62,7 @@ move through them.
 | `x`       | Cancel staged upload / clear reply or edit |
 | `s`       | Download the selected file     |
 | `g`       | Jump to original (for replies) |
-| `o`       | Open / view media - photo in the OS viewer, video inline (Kitty + ffmpeg) or in the system player |
+| `o`       | Open / view media: photo in the OS viewer, video inline (Kitty + ffmpeg) or in the system player |
 | `O`       | Open the selected video in the external player |
 | `p`       | Play voice message (in-app)    |
 | `P`       | Profile of the selected message's author, or of the person in a private chat |
@@ -72,7 +72,7 @@ move through them.
 A message that could not be sent stays in the chat, marked `✕` in its bottom
 border; selecting it names the reason in the status bar. `Enter` queues it
 again, and `Space` opens a short menu offering Retry and Discard. `x` is
-unaffected - it still clears a staged reply, edit or upload, never a queued
+unaffected: it still clears a staged reply, edit or upload, never a queued
 send.
 
 ## Compose (insert mode)
@@ -113,8 +113,8 @@ no chat to mute, and a guessed state would be worse than none.
 
 Override default keys in the `keybindings:` section of
 `~/.config/tele/config.yml`. The generated config already lists **every action
-with its current default keys**, commented out - just uncomment a line and
-change the key(s). Bindings are grouped by **context**, then by **action**:
+with its current default keys**, commented out: uncomment a line and change
+the key(s). Bindings are grouped by **context**, then by **action**:
 
 ```yaml
 keybindings:
@@ -127,7 +127,7 @@ keybindings:
 
 - **Replace semantics:** the keys you list become the _only_ keys for that
   action in that context. Actions you don't mention keep their defaults.
-- **Chords:** a multi-key sequence is written as space-separated key tokens -
+- **Chords:** a multi-key sequence is written as space-separated key tokens:
   `"g g"` means press `g` then `g`. Tokens use the terminal key names
   (`ctrl+d`, `enter`, `esc`, `space`, `up`, ...).
 - **Conflicts** (an unknown action/context, an empty key, a key reused for two
@@ -180,7 +180,7 @@ These are the action names usable as YAML keys in the `keybindings:` section
 | `normal`            | Leave insert mode / close the chat       |
 | `search`            | Open chat search                         |
 | `open_context_menu` | Open the message context menu            |
-| `open_in_viewer`    | Open / view the selected media - photo in the OS viewer, video inline or in the system player |
+| `open_in_viewer`    | Open / view the selected media: photo in the OS viewer, video inline or in the system player |
 | `open_external`     | Open the selected video in the external player |
 | `play_voice`        | Play the selected voice message in-app    |
 | `reply`             | Reply to the selected message            |
@@ -250,6 +250,6 @@ These are the action names usable as YAML keys in the `keybindings:` section
 > `left`, `right`.
 
 > **Keyboard layout:** letter bindings also fire on the **same physical key**
-> under a Russian (ЙЦУКЕН) layout - e.g. `r`/Reply works whether the key types
+> under a Russian (ЙЦУКЕН) layout: `r`/Reply works whether the key types
 > `r` or `к`. Bindings are still written with Latin keys; no duplication needed.
 > (Only the Russian layout is mapped today.)

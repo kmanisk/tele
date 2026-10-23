@@ -1,7 +1,7 @@
 # Commands
 
-Every command `tele` has, with its flags. What the commands have in common -
-how they are named, what they exit with, what their JSON looks like - is in
+Every command `tele` has, with its flags. What the commands have in common
+(how they are named, what they exit with, what their JSON looks like) is in
 [cli.md](cli.md). `tele help COMMAND`, or `--help` after any command, prints
 the same from the binary itself.
 
@@ -35,8 +35,8 @@ tele [-c PATH]
 ```
 
 Opens a window on the account. If no other `tele` holds the account, this one
-does, for as long as the window is open; if one does - a window, `tele daemon`
-or the service - this window joins it and shares its connection. Quitting a
+does, for as long as the window is open; if one does (a window, `tele daemon`
+or the service), this window joins it and shares its connection. Quitting a
 window that holds the account while other windows are joined to it asks
 first, and closes them too.
 

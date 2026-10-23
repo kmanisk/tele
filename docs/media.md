@@ -72,7 +72,7 @@ shown as a circle. Press `o` to play in the system player.
 ## GIFs
 
 An inline static thumbnail with a `GIF` badge. The selected GIF loops silently
-in place in Kitty graphics mode. This needs `ffmpeg` - see below.
+in place in Kitty graphics mode. This needs `ffmpeg`, see below.
 
 ## Audio (music)
 
@@ -80,8 +80,8 @@ Performer, title and duration. Other media types show a labelled placeholder.
 
 ## Sending media
 
-Attach an existing file from disk with `u` - photos, videos, voice notes, music,
-documents - and confirm the send-as type before sending. Press `u` again to
+Attach an existing file from disk with `u` (photos, videos, voice notes, music,
+documents) and confirm the send-as type before sending. Press `u` again to
 stage more files: they are sent as one grouped album, with photos and documents
 split into separate albums automatically.
 

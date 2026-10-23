@@ -26,8 +26,8 @@ ui:
 ```
 
 Naming a single theme fills both slots with it, which is how you say "this
-theme, always". There is no separate switch to turn following off - both slots
-are simply holding the same theme.
+theme, always". There is no separate switch to turn following off: both slots
+hold the same theme.
 
 The built-ins are called **`tele-dark`** and **`tele-light`**. They are the root
 of every chain: a token no theme sets comes from the built-in for that slot, so a
@@ -56,7 +56,7 @@ Macchiato, Dracula, Gruvbox Dark, Nord, Tokyo Night (Night, Moon and Day) and
 Seoul256 Light are **bundled**: they are inside the binary, so `ui.theme: nord`
 works on a machine with no theme files at all and nothing has to be copied
 anywhere. Each sets every token and claims the canvas, and each is commented
-with the palette it came from and the places it had to depart from it - the
+with the palette it came from and the places it had to depart from it. The
 files are in [`themes/`](../themes/) if you want to read one before choosing.
 
 To change a bundled theme rather than use it, name it as a base below, or dump
@@ -86,14 +86,14 @@ another name and `base: nord`.
 
 The two built-ins are the exception. A file called `tele-dark.yml` or
 `tele-light.yml` is ignored with a warning, because `base: tele-dark` has to
-mean the same palette on every machine - otherwise a theme you copied from
+mean the same palette on every machine; otherwise a theme you copied from
 someone else would resolve to different colours than it does for them.
 
 ## Colors
 
 A token holds a colour and nothing else. Weight, slant, padding and the border
 glyphs are properties of the component that draws the thing, not of the theme,
-so there is no `bold` or `italic` to set here - that is what a theme is today,
+so there is no `bold` or `italic` to set here. That is what a theme is today,
 not a promise about what it will always be.
 
 A token takes any of:
@@ -115,7 +115,7 @@ them makes tele follow your terminal instead of overriding it.
 
 `none` means the attribute is not set. As a foreground the text takes the
 terminal's own text color; as a background nothing is painted, which is the only
-way to let terminal transparency show through - on `background` it is what keeps
+way to let terminal transparency show through. On `background` it is what keeps
 the whole screen the terminal's:
 
 ```yaml
@@ -154,7 +154,7 @@ tele theme check
 ```
 
 prints what each slot resolved to, the chain it inherited through, and how many
-tokens came from where - including the ones that fell back to the built-in
+tokens came from where, including the ones that fell back to the built-in
 because nothing in your chain set them. `tele theme check mine` inspects one
 theme by name.
 
@@ -170,8 +170,8 @@ dark slot: nord
 `file` is one of yours, `bundled` is a palette that ships inside the binary, and
 `built-in` is `tele-dark` or `tele-light`.
 
-Anything tele could not use - a missing theme, an unreadable file, a color it
-could not parse, a key it does not know - is a warning, never a failure to
+Anything tele could not use (a missing theme, an unreadable file, a color it
+could not parse, a key it does not know) is a warning, never a failure to
 start. Warnings appear as toasts when tele opens and in
 `~/.local/state/tele/tele.log`. An unknown key is ignored and the rest of the
 file is still used, so a theme written for a later version of tele keeps working
@@ -180,8 +180,8 @@ here.
 ### What will not be readable
 
 If your theme sets `background`, `tele theme check` also measures everything drawn
-straight onto that canvas - every foreground token and every `sender_palette`
-entry - and lists what falls below 3.0:1 against it:
+straight onto that canvas (every foreground token and every `sender_palette`
+entry) and lists what falls below 3.0:1 against it:
 
 ```
   canvas #ffffff: 15 tokens and 7 sender_palette entries below 3.0:1
@@ -194,7 +194,7 @@ entry - and lists what falls below 3.0:1 against it:
 Worst first, because 1.1:1 is invisible while 2.8:1 is merely quiet. The last
 column is the one to read: `from mine` means you wrote that colour and can
 change it, `from tele-dark` means you inherited it and have to set the token in
-your file. The example above is the usual accident - a light canvas on a chain
+your file. The example above is the usual accident: a light canvas on a chain
 rooted in `tele-dark`, which supplies a foreground palette tuned for black.
 
 A token left at `none` is listed too, without a ratio. Nothing could be measured:
@@ -208,20 +208,20 @@ theme mine: 15 tokens and 7 sender_palette entries are unreadable on its canvas;
 ```
 
 None of this refuses anything. The theme loads and renders exactly as you wrote
-it - the floor is a guide, not a rule, and it is set at 3.0:1 rather than the
+it. The floor is a guide, not a rule, and it is set at 3.0:1 rather than the
 4.5:1 meant for body text precisely so that tokens intended to be quiet may stay
 quiet. If you disagree with a finding, ignore it.
 
 That is deliberate rather than unfinished. Contrast is computed from relative
 luminance and is blind to hue, so it misjudges a saturated colour against a
-neutral one - tele-dark's own accent measures 1.29:1 against the text it marks
+neutral one: tele-dark's own accent measures 1.29:1 against the text it marks
 and reads perfectly well. Enforcing a chosen threshold through a measure known
 to be wrong in a specific way would refuse themes that are fine, with no appeal.
 A warning can be tightened later on evidence; a refusal cannot be loosened
 without having already broken files people wrote.
 
 Two things it does not check. A theme that leaves `background` unset gets no
-audit at all - the canvas is then your terminal's, and tele cannot see it; the
+audit at all: the canvas is then your terminal's, and tele cannot see it; the
 built-ins are covered by their own tests instead. And tokens drawn on a surface
 the app paints (`text_on_toast`, `accent_status_bar`) are not measured here:
 they have to be judged against that surface, not against the canvas.
@@ -230,7 +230,7 @@ they have to be judged against that surface, not against the canvas.
 
 The `reload_config` action re-reads the theme files and the config file and
 applies both, without a restart. It ships with **no key bound**, because it is
-only useful while you are editing something in another window - most often while
+only useful while you are editing something in another window, most often while
 writing a theme, where a restart costs a reconnect for every colour you try.
 Bind it when you need it:
 
@@ -245,8 +245,8 @@ It still works and does the same thing, so a config that already binds it needs
 no change.
 
 A reload reports what it found: the resolved theme in each slot, or the first
-problem and how many others are in the log. Anything wrong in the config file -
-a value tele will not accept, a theme that is not there - is reported the same
+problem and how many others are in the log. Anything wrong in the config file
+(a value tele will not accept, a theme that is not there) is reported the same
 way.
 
 ## Tokens
@@ -285,14 +285,14 @@ paints:
 
 `text` is the largest area of colour on screen and the one that decides whether
 a theme reads as itself. The built-ins leave it `none`, which means the
-terminal's own foreground - exactly how tele behaved before the token existed -
+terminal's own foreground, exactly how tele behaved before the token existed,
 so a theme has to claim it deliberately.
 
 ### The canvas
 
 `background` is the field of colour behind everything, wherever no surface
-covers it. Both built-ins leave it `none`, which means the terminal's own - how
-tele has always looked - so nothing changes until a theme claims it.
+covers it. Both built-ins leave it `none`, which means the terminal's own, how
+tele has always looked, so nothing changes until a theme claims it.
 
 | Token        | Where                                                |
 | ------------ | ---------------------------------------------------- |
@@ -302,7 +302,7 @@ tele has always looked - so nothing changes until a theme claims it.
 refused, with a warning, and renders as though it had set neither. The reason is
 not tidiness: painting the screen while leaving the text to the terminal puts a
 known background under an unknown foreground. That combination already shipped
-once at panel scale - popup menus came out blue on grey on a light terminal,
+once at panel scale: popup menus came out blue on grey on a light terminal,
 with the accented hotkey indistinguishable from the label around it. At canvas
 scale it covers everything.
 
@@ -324,13 +324,13 @@ built-ins would do if they claimed the body text.
 
 **Setting it ends terminal transparency.** A transparent terminal shows your
 wallpaper through the cells tele does not paint; a canvas paints all of them.
-There is no partial version of this - leave `background` unset to keep the
+There is no partial version of this. Leave `background` unset to keep the
 backdrop.
 
 Two more things are worth knowing before you set it:
 
-- Every other token that draws _on_ the canvas - `text_dim`, `status_online`,
-  `tick_read`, `name_incoming`, the whole `sender_palette` - still comes from
+- Every other token that draws _on_ the canvas (`text_dim`, `status_online`,
+  `tick_read`, `name_incoming`, the whole `sender_palette`) still comes from
   wherever your chain rooted. A theme that paints a light canvas but roots in
   `tele-dark` inherits a foreground palette tuned for black, and several of
   those tokens will be close to invisible. Run `tele theme check` after
@@ -338,7 +338,7 @@ Two more things are worth knowing before you set it:
   it and tell you which ones. See
   [What will not be readable](#what-will-not-be-readable).
 - Images keep working. A Kitty placement draws over the cells it occupies, and
-  the canvas shows through wherever the image is transparent - which is an
+  the canvas shows through wherever the image is transparent, which is an
   improvement: without it, transparent pixels showed the terminal instead,
   leaving image-shaped holes in an otherwise painted screen.
 
@@ -357,8 +357,8 @@ light, but the status bar and (in most themes) the popup panels are not.
 | `accent_mode_normal` | NORMAL label fill                                                                              |
 | `accent_mode_insert` | INSERT label fill                                                                              |
 
-If your theme paints a dark status bar under a light terminal - `tele-light`
-does - keep `accent_status_bar` and `accent_insert` light. They are the only two
+If your theme paints a dark status bar under a light terminal, as `tele-light`
+does, keep `accent_status_bar` and `accent_insert` light. They are the only two
 accents whose background does not follow the terminal.
 
 ### Status and message state

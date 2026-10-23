@@ -13,7 +13,7 @@ Pass `--config <path>` to use a different one.
 Press `,` for the settings overlay: every setting `tele` has, grouped and ordered
 the way the config file is, so a row you see there is found in the file at the
 same path. It shows what each one is worth now, marks the ones nobody has chosen
-(`[default]`), and says when a change takes hold - at once, `[next]` time `tele`
+(`[default]`), and says when a change takes hold: at once, `[next]` time `tele`
 does that thing, after a `[restart]`, or after a `[host restart]` of the `tele`
 that holds the connection. Keybindings are listed there too, with what your
 config changed and what it changed from.
@@ -24,7 +24,7 @@ the file in an editor and editing it in the overlay are the same act: both end
 with the file being read again, so the two can never disagree. `enter` changes
 the setting under the cursor, `r` puts it back to its default, and `esc` closes.
 
-Four settings are shown but not changed there - which account this is, and where
+Four settings are shown but not changed there: which account this is, and where
 its state lives. Changing those means moving files and reopening a session, so
 they are a deliberate edit to the file rather than a keystroke.
 
@@ -99,13 +99,13 @@ takes hold on `[host restart]`.
 | -------- | ------------------------------------------------------------- |
 | `auto`   | the default: whatever `ALL_PROXY` says, direct if it says nothing |
 | `direct` | no proxy, and `ALL_PROXY` is ignored                          |
-| `mtproto`| an MTProto proxy - `server`, `port` and `secret`               |
-| `socks5` | a SOCKS5 proxy - `server`, `port`, and `username`/`password` if it asks |
+| `mtproto`| an MTProto proxy: `server`, `port` and `secret`                |
+| `socks5` | a SOCKS5 proxy: `server`, `port`, and `username`/`password` if it asks |
 
 An MTProto proxy is the kind the official clients take from a `tg://proxy` or
 `t.me/proxy` link, including local bridges that expose one on `127.0.0.1`. Write
 the `secret` the way the proxy published it: hex or base64url, both are read, and
-all three kinds work - a bare secret, a `dd` one, and an `ee` one that disguises
+all three kinds work: a bare secret, a `dd` one, and an `ee` one that disguises
 the connection as ordinary web traffic to the domain the secret carries.
 
 ```yaml
@@ -133,7 +133,7 @@ proxy:
   password: hunter2
 ```
 
-Values belonging to another type are left alone and reported at launch - a
+Values belonging to another type are left alone and reported at launch: a
 `secret` under `socks5` is not used, and `tele` says so rather than letting you
 believe it is.
 
@@ -163,7 +163,7 @@ once `tele` is running.
 
 Before this section existed, `tele` read the `ALL_PROXY` environment variable,
 and it still does when `proxy.type` is `auto`. Only `socks5://` URLs are read
-from it - an `http://` proxy there is ignored, silently by everything else and
+from it; an `http://` proxy there is ignored, silently by everything else and
 with a warning by `tele`.
 
 The variable is deprecated and will be removed. It applies to every program
@@ -180,7 +180,7 @@ proxy:
 
 ## State directory
 
-`state_dir` sets where the account's state lives - the Telegram session, the
+`state_dir` sets where the account's state lives: the Telegram session, the
 local database, and the instance lock. It defaults to `$XDG_STATE_HOME/tele`,
 falling back to `~/.local/state/tele`.
 
@@ -196,7 +196,7 @@ its composer when you quit it.
 A window that joined another `tele` writes its log to `tele-client.log`, beside
 `tele.log`, with the process id on every line.
 
-A `tele` too old to be joined - 1.11 or an earlier 2.0 beta - still holds the
+A `tele` too old to be joined (1.11 or an earlier 2.0 beta) still holds the
 state directory without letting anything join it. A newer one started beside it
 waits a few seconds, then says which process holds the directory and exits. The
 same happens when the two speak different versions of their protocol. Quit the
@@ -289,7 +289,7 @@ learn that messages stopped arriving.
 The older `telegram.session_file` key still works and keeps the session where it
 points, but it is deprecated and will be removed in the next release. If you have
 not set it, your existing session and database are moved into the state directory
-automatically on first run - nothing is lost and you stay logged in.
+automatically on first run: nothing is lost and you stay logged in.
 
 ## Telegram's limits
 
@@ -327,7 +327,7 @@ own window, which no daemon rule can reach. Turn either off, or both.
 
 Neither switch touches the chat list: with both off, a new message still
 highlights its row and moves the chat up. That is the message arriving, not an
-interruption - the same line Telegram's own mute draws.
+interruption, the same line Telegram's own mute draws.
 
 `preview` is about what a notification says rather than where it goes, so it
 applies to both: off, the desktop notification and the toast alike carry the
@@ -343,8 +343,8 @@ bottom-left corner is not offered: it is kept for the key-press overlay.
 ## Photos
 
 `photos.mode` picks the renderer. `auto` uses the Kitty graphics protocol in the
-terminals known to place images through Unicode placeholders - kitty, Ghostty,
-and iTerm2 from 3.7.0 - and draws ANSI block art everywhere else, including
+terminals known to place images through Unicode placeholders (kitty, Ghostty,
+and iTerm2 from 3.7.0) and draws ANSI block art everywhere else, including
 inside tmux and screen, which do not pass the protocol through. `kitty` and
 `blocks` force one renderer for a terminal the heuristic does not know: forcing
 `kitty` on one that ignores placeholder cells leaves a photo as blank space
@@ -354,7 +354,7 @@ rather than block art. The value is read once at startup.
 terminal simultaneously. Only on-screen images (plus a few recently
 scrolled-past) are transmitted; older ones are evicted. Transmitting an entire
 heavy chat at once can exceed the terminal's image limit and corrupt placements
-(shrunken or shifted photos) - lower the cap if you still see that.
+(shrunken or shifted photos). Lower the cap if you still see that.
 
 `max_long_side_px` caps a rendered inline image's long side in pixels (mirrors
 the desktop clients' fixed media size). The height is additionally bounded to 2/3
@@ -366,12 +366,12 @@ inline images, lower it for more compact ones.
 `avatars.disk_cache_size` is a second budget, deliberately not part of
 `photos.disk_cache_size`. An avatar is around a hundred kilobytes and is asked
 for again every time you open that person's profile, while chat media is
-unbounded and looked at once - sharing one budget would let a scrolling session
+unbounded and looked at once, so sharing one budget would let a scrolling session
 evict every face you have. Either key set to `0` means "keep nothing between
 runs": that cache moves into a temp directory and is deleted on exit.
 
 ## See also
 
-- [Themes](themes.md) - the `ui.theme` slots, writing your own, every token
-- [Keybindings](keybindings.md#configurable-actions) - the `keybindings:` section
-- [Media](media.md) - what the photo, voice and video settings affect
+- [Themes](themes.md): the `ui.theme` slots, writing your own, every token
+- [Keybindings](keybindings.md#configurable-actions): the `keybindings:` section
+- [Media](media.md): what the photo, voice and video settings affect
