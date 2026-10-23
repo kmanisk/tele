@@ -75,6 +75,16 @@ type AccountContents struct {
 	// host's setting, and a client sizes its history window by it rather than
 	// by a setting of its own (#208).
 	HistoryPage int
+	// Throttle is the flood wait somebody's call ran into that ends last; zero
+	// before any, and over once its Until has passed (#212).
+	Throttle Throttle
+}
+
+// Throttle is a method Telegram asked to wait for, and until when. Nothing
+// says it ended: a client counts down to Until and stops there.
+type Throttle struct {
+	Method string
+	Until  time.Time
 }
 
 // LoggedInUser is the user an account is logged in as.

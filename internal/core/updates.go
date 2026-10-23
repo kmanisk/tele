@@ -8,6 +8,7 @@ import (
 
 	"github.com/sorokin-vladimir/tele/internal/core/state"
 	"github.com/sorokin-vladimir/tele/internal/domain"
+	"github.com/sorokin-vladimir/tele/internal/priority"
 	"github.com/sorokin-vladimir/tele/internal/store"
 	internaltg "github.com/sorokin-vladimir/tele/internal/tg"
 )
@@ -125,8 +126,9 @@ func (o *Owner) Bootstrap(ctx context.Context) error {
 		o.state.SetDialogs(archived)
 	}
 	// Topics are read after the dialog list rather than with it: the list is
-	// what the main screen waits for, and a forum's badge can follow it.
-	o.spawn(func() { o.loadForumTopics(ctx, append(chats, archived...)) })
+	// what the main screen waits for, and a forum's badge can follow it. So
+	// nobody waits on them, and they yield to what somebody does (#212).
+	o.spawn(func() { o.loadForumTopics(priority.InBackground(ctx), append(chats, archived...)) })
 	return nil
 }
 

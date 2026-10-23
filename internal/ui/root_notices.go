@@ -78,13 +78,19 @@ func (m RootModel) handleNoticeKey() (RootModel, bool) {
 	if m.noticeLeft > 0 {
 		return m, true
 	}
+	return m.dismissNotice(), true
+}
+
+// dismissNotice marks the head of the queue seen and brings up the next one,
+// with its own countdown.
+func (m RootModel) dismissNotice() RootModel {
 	m.noticeSeen.MarkSeen(m.noticeQueue[0].ID)
 	m.noticeQueue = m.noticeQueue[1:]
 	m.noticeLeft = 0
 	if len(m.noticeQueue) > 0 {
 		m.noticeLeft = int(m.noticeQueue[0].Delay.Seconds())
 	}
-	return m, true
+	return m
 }
 
 // handleNoticeAnswer consumes a key press while a notice that asks is up. Only
@@ -111,13 +117,7 @@ func (m RootModel) handleNoticeAnswer(msg tea.KeyPressMsg) (RootModel, tea.Cmd, 
 	default:
 		return m, nil, true
 	}
-	m.noticeSeen.MarkSeen(m.noticeQueue[0].ID)
-	m.noticeQueue = m.noticeQueue[1:]
-	m.noticeLeft = 0
-	if len(m.noticeQueue) > 0 {
-		m.noticeLeft = int(m.noticeQueue[0].Delay.Seconds())
-	}
-	return m, cmd, true
+	return m.dismissNotice(), cmd, true
 }
 
 // noticeView renders the head of the queue centred over dimmed content.

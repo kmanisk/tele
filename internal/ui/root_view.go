@@ -45,6 +45,10 @@ func (m RootModel) View() tea.View {
 			combined := joinCentred(logoView, "\n", loginBox)
 			content = lipgloss.Place(m.width, m.height, lipgloss.Center, lipgloss.Center, combined, fill)
 		}
+	} else if m.width <= 0 || m.height <= 0 {
+		// The panes are laid out from the terminal's size, and a window attached
+		// to an account that is already loaded reaches this screen before the
+		// terminal has reported one. The frame stays empty until it does.
 	} else {
 		paneH := m.height + 1
 		innerH := paneH - 2*borderSize

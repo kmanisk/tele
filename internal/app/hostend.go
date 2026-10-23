@@ -30,12 +30,13 @@ type HostEnd struct {
 	// Nil until the host has an owner to hand it to: one opened later starts
 	// from the store as it is.
 	apply func(*config.Config)
-	// since is when the host started; clients and account are what it counts
-	// and tells of when asked how it is doing. Nil until there is something
-	// to count.
-	since   time.Time
-	clients func() int
-	account func() *wire.AccountStatus
+	// since is when the host started; windows, commands and account are what
+	// it counts and tells of when asked how it is doing. Nil until there is
+	// something to count.
+	since    time.Time
+	windows  func() int
+	commands func() int
+	account  func() *wire.AccountStatus
 	// restart stops the host to be started again, nil while nothing would.
 	restart func()
 	// uninstalled is set once the host, a service, was told it is being
@@ -51,11 +52,11 @@ func NewHostEnd(store *config.Store, hello wire.Hello) *HostEnd {
 	return &HostEnd{store: store, hello: hello, since: time.Now()}
 }
 
-// StatusFrom sets what the host counts its clients with, and where it learns
-// how its account is doing.
-func (e *HostEnd) StatusFrom(clients func() int, account func() *wire.AccountStatus) {
+// StatusFrom sets what the host counts its windows and its commands with, and
+// where it learns how its account is doing.
+func (e *HostEnd) StatusFrom(windows, commands func() int, account func() *wire.AccountStatus) {
 	e.mu.Lock()
-	e.clients, e.account = clients, account
+	e.windows, e.commands, e.account = windows, commands, account
 	e.mu.Unlock()
 }
 
@@ -107,15 +108,18 @@ func (e *HostEnd) StopReason() core.StopReason {
 	return core.StopQuit
 }
 
-// Status is how the host is doing. The client asking is one of the clients
-// counted, and is left out: it is asking, not drawing (#208).
+// Status is how the host is doing. The command asking is one of the commands
+// counted, and is left out: it asks about the others (#208, #213).
 func (e *HostEnd) Status() wire.HostStatus {
 	e.mu.Lock()
-	clients, account := e.clients, e.account
+	windows, commands, account := e.windows, e.commands, e.account
 	e.mu.Unlock()
 	s := wire.HostStatus{Since: e.since}
-	if clients != nil {
-		s.Clients = max(clients()-1, 0)
+	if windows != nil {
+		s.Windows = windows()
+	}
+	if commands != nil {
+		s.Commands = max(commands()-1, 0)
 	}
 	if account != nil {
 		s.Account = account()

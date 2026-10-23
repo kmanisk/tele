@@ -186,7 +186,7 @@ func Load(path, defaultStateDir string) (*Config, error) {
 	v := viper.New()
 	v.SetConfigFile(path)
 	setDefaults(v)
-	if err := v.ReadInConfig(); err != nil {
+	if err := readConfig(v, path); err != nil {
 		return nil, err
 	}
 	repairs := repairIllegal(v)
@@ -204,6 +204,19 @@ func Load(path, defaultStateDir string) (*Config, error) {
 	cfg.ThemesDir = filepath.Join(filepath.Dir(path), themesDirName)
 	cfg.resolveTheme()
 	return &cfg, nil
+}
+
+// readConfig reads the file at path into v while no edit is replacing it.
+//
+// A directory the lock file cannot be made in is one no edit can rename a file
+// into either, so the file is read without the lock there rather than refused:
+// a config a system configuration manages is read-only and must still load. A
+// directory that does not exist is ReadInConfig's to report.
+func readConfig(v *viper.Viper, path string) error {
+	if unlock, err := lockEdits(path); err == nil {
+		defer unlock()
+	}
+	return v.ReadInConfig()
 }
 
 // resolveProxy is the one section that can stop a config from loading.

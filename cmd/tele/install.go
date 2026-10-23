@@ -267,5 +267,5 @@ func reachHolder(ctx context.Context, stateDir string) (io.ReadWriteCloser, bool
 
 // ownHello is what a command that only asks the host says of itself.
 func ownHello() wire.Hello {
-	return wire.Hello{Protocol: wire.ProtocolVersion, Binary: version.Version}
+	return wire.Hello{Protocol: wire.ProtocolVersion, Binary: version.Version, Kind: wire.KindCommand}
 }

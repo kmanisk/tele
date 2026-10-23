@@ -47,8 +47,8 @@ so `my-theme`, `my_theme` and `MyTheme` all name one theme.
 The quickest start is to dump what you are already running and edit it:
 
 ```console
-tele --theme-dump > ~/.config/tele/themes/mine.yml
-tele --theme-dump=light > ~/.config/tele/themes/mine-light.yml
+tele theme dump > ~/.config/tele/themes/mine.yml
+tele theme dump light > ~/.config/tele/themes/mine-light.yml
 ```
 
 Or start from one of the palettes tele already ships with. Catppuccin
@@ -60,7 +60,7 @@ with the palette it came from and the places it had to depart from it - the
 files are in [`themes/`](../themes/) if you want to read one before choosing.
 
 To change a bundled theme rather than use it, name it as a base below, or dump
-it and edit the result: `tele --theme-dump=nord > ~/.config/tele/themes/mine.yml`.
+it and edit the result: `tele theme dump nord > ~/.config/tele/themes/mine.yml`.
 
 To change a few colors, inherit instead. `base:` names the theme this one takes
 everything it does not set from:
@@ -150,12 +150,12 @@ than merging into it. To change one sender color, write all of them.
 ## When something looks wrong
 
 ```console
-tele --theme-check
+tele theme check
 ```
 
 prints what each slot resolved to, the chain it inherited through, and how many
 tokens came from where - including the ones that fell back to the built-in
-because nothing in your chain set them. `tele --theme-check=mine` inspects one
+because nothing in your chain set them. `tele theme check mine` inspects one
 theme by name.
 
 Every theme in the chain is printed with where it came from, which is the one
@@ -179,7 +179,7 @@ here.
 
 ### What will not be readable
 
-If your theme sets `background`, `--theme-check` also measures everything drawn
+If your theme sets `background`, `tele theme check` also measures everything drawn
 straight onto that canvas - every foreground token and every `sender_palette`
 entry - and lists what falls below 3.0:1 against it:
 
@@ -204,7 +204,7 @@ On startup and on reload you get one toast per theme rather than one per token,
 saying how many and where the detail is:
 
 ```
-theme mine: 15 tokens and 7 sender_palette entries are unreadable on its canvas; run tele --theme-check
+theme mine: 15 tokens and 7 sender_palette entries are unreadable on its canvas; run tele theme check
 ```
 
 None of this refuses anything. The theme loads and renders exactly as you wrote
@@ -251,7 +251,7 @@ way.
 
 ## Tokens
 
-Run `tele --theme-dump` for the current value of every token. What each one
+Run `tele theme dump` for the current value of every token. What each one
 paints:
 
 ### Surfaces - filled areas drawn behind content
@@ -333,7 +333,7 @@ Two more things are worth knowing before you set it:
   `tick_read`, `name_incoming`, the whole `sender_palette` - still comes from
   wherever your chain rooted. A theme that paints a light canvas but roots in
   `tele-dark` inherits a foreground palette tuned for black, and several of
-  those tokens will be close to invisible. Run `tele --theme-check` after
+  those tokens will be close to invisible. Run `tele theme check` after
   setting it: once a theme names its own canvas, tele can measure them against
   it and tell you which ones. See
   [What will not be readable](#what-will-not-be-readable).

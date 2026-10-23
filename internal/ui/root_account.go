@@ -1,6 +1,8 @@
 package ui
 
 import (
+	"time"
+
 	tea "charm.land/bubbletea/v2"
 
 	"github.com/sorokin-vladimir/tele/internal/core/project"
@@ -34,6 +36,11 @@ func (m RootModel) handleAccountDelta(next project.AccountContents) (RootModel, 
 	}
 	if next.ClockSkew != prev.ClockSkew {
 		m = m.handleClockSkew(next.ClockSkew)
+	}
+	if next.Throttle != prev.Throttle {
+		updated, cmd := m.handleThrottle(next.Throttle.Until, time.Now())
+		m = updated
+		cmds = append(cmds, cmd)
 	}
 	if next.Phase == project.AccountLoggingIn && next.Login != prev.Login {
 		route(screens.AuthRequestMsg{Step: next.Login.Kind, Hint: next.Login.Hint, Err: next.Login.Err, Seq: next.Login.Seq})

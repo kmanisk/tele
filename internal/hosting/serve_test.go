@@ -196,3 +196,37 @@ func TestServe_AClientAskingForTheEndIsHeard(t *testing.T) {
 		t.Fatal("the host never heard it")
 	}
 }
+
+// clientAs attaches to the host at ep as a client of kind.
+func clientAs(t *testing.T, ep ipc.Endpoint, kind wire.ClientKind) *dial.Attachment {
+	t.Helper()
+	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
+	defer cancel()
+	conn, err := ipc.Dial(ctx, ep)
+	require.NoError(t, err)
+	h := hello
+	h.Kind = kind
+	a, err := dial.Dial(ctx, conn, h)
+	require.NoError(t, err)
+	t.Cleanup(func() { _ = a.Close() })
+	return a
+}
+
+// A host counts its windows apart from its commands, by what each says it is
+// in its hello: a command running is not a person looking (#213).
+func TestServe_WindowsAndCommandsAreCountedApart(t *testing.T) {
+	clients := hosting.NewClients()
+	ep, _ := host(t, clients)
+
+	clientAs(t, ep, wire.KindWindow)
+	clientAs(t, ep, wire.KindWindow)
+	cmd := clientAs(t, ep, wire.KindCommand)
+
+	require.Eventually(t, func() bool { return clients.Windows() == 2 && clients.Commands() == 1 },
+		2*time.Second, 10*time.Millisecond, "windows %d, commands %d", clients.Windows(), clients.Commands())
+
+	_ = cmd.Close()
+	require.Eventually(t, func() bool { return clients.Commands() == 0 }, 2*time.Second, 10*time.Millisecond,
+		"a command that went is not counted")
+	assert.Equal(t, 2, clients.Windows())
+}

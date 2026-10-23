@@ -82,7 +82,7 @@ play **inside** the app with a waveform and a moving playhead - no external
 player, and no CMake step to build an Opus decoder. Chats open instantly from a
 local SQLite history, themes come as eight built-in palettes that switch between
 a dark and a light one as your terminal background changes (with
-`--theme-check` to validate contrast), and every key is rebindable per context,
+`tele theme check` to validate contrast), and every key is rebindable per context,
 chords included.
 
 Where they are ahead, honestly: `tg` and `tuigram` can **record** voice messages
@@ -365,25 +365,29 @@ More, including which Homebrew formula carries which key:
 
 ---
 
-## Flags
+## Commands
 
-| Flag              | Description                                                                                    |
-| ----------------- | ---------------------------------------------------------------------------------------------- |
-| `--config <path>` | Path to config file (default `~/.config/tele/config.yml`)                                      |
-| `-e`, `--debug`   | Enable debug logging                                                                           |
-| `--trace`         | Log sensitive metadata (peer IDs, message lengths). Never use on shared or synced file systems |
-| `--version`       | Print version and exit                                                                         |
-| `--theme-check`   | Print which theme each slot resolved to and where its tokens came from, then exit              |
-| `--theme-dump`    | Print a slot's theme as a complete theme file, then exit (`--theme-dump=light`)                |
+| Command                   | Description                                                                                     |
+| ------------------------- | ----------------------------------------------------------------------------------------------- |
+| `tele`                    | Open a window on the account                                                                    |
+| `tele version`            | Print the version                                                                               |
+| `tele theme check [NAME]` | Say which theme each slot resolved to and where its tokens came from, or of one theme by name   |
+| `tele theme dump [NAME]`  | Print a slot's theme, or a named one, as a complete theme file (`tele theme dump light`)        |
+| `tele daemon`             | Hold the account with no window, keeping the connection and notifications; windows join it     |
+| `tele daemon status`      | Say how the `tele` holding the account is doing (`--json` for scripts); exits 3 when none is    |
+| `tele daemon install`     | Keep `tele` running at every login as a service: launchd, systemd user unit or Task Scheduler   |
+| `tele daemon uninstall`   | Stop the service and remove it; state and config are left alone                                 |
 
-| Command                 | Description                                                                                   |
-| ----------------------- | --------------------------------------------------------------------------------------------- |
-| `tele daemon`           | Hold the account with no window, keeping the connection and notifications; windows join it   |
-| `tele daemon status`    | Say how the `tele` holding the account is doing; exits 3 when none is running                 |
-| `tele daemon install`   | Keep `tele` running at every login as a service: launchd, systemd user unit or Task Scheduler |
-| `tele daemon uninstall` | Stop the service and remove it; state and config are left alone                               |
+| Flag                    | Description                                                                                    |
+| ----------------------- | ---------------------------------------------------------------------------------------------- |
+| `-c`, `--config <path>` | Path to config file (default `~/.config/tele/config.yml`)                                      |
+| `-e`, `--debug`         | Enable debug logging                                                                           |
+| `--trace`               | Log sensitive metadata (peer IDs, message lengths). Never use on shared or synced file systems |
 
-See [docs/configuration.md](docs/configuration.md#running-without-a-window).
+Every command and flag in full: [docs/commands.md](docs/commands.md). Exit
+codes, JSON output and the rules commands are named by:
+[docs/cli.md](docs/cli.md). Running without a window:
+[docs/configuration.md](docs/configuration.md#running-without-a-window).
 
 ---
 
@@ -491,13 +495,9 @@ minor lines (`v1.11`, `v2.0`, …); patch releases ship incrementally within a l
 | Release             | Focus                                                                                                                                                                                                                                    |
 | ------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `v1.11` _(done)_    | Settings & people - in-app settings overlay, user profile overlay, avatars, themes shipped inside the binary, plus the distribution and audit gaps left behind                                                                            |
-| `v2.0` _(in work)_  | Single owner of the Telegram connection - a resident daemon with attachable TUI and CLI clients, headless scripting, background notifications                                                                                             |
+| `v2.0` _(done)_     | Single owner of the Telegram connection - windows that join one `tele`, a service that keeps it running at login, notifications with no window open, one budget for calls to Telegram                                                    |
+| `v2.1`              | Scripting - commands that list chats and topics, read a chat and send to it, with JSON output; then rich messages                                                                                                                        |
 | `Backlog`           | Power-user & platform - search (full-text history, command palette, in-chat grep), voice and round-video messages, scheduled sending, bot commands & inline keyboards, secret chats, polls, extended vim motions, notification click routing |
-
-> [!NOTE]
-> `v2.0` is in work now. Until it ships, every other issue and open pull request
-> is on hold: v2.0 changes how the interface gets its data, and work started
-> beside it would have to be redone after it.
 
 Work is also categorized by theme (Security & Reliability, Architecture & Performance,
 Feature Completeness, Power User & Polish) via the board's **Theme** field.
@@ -522,6 +522,8 @@ Building with your own app key, the `nix develop` shell and the flake's
 
 ## Documentation
 
+- [Commands](docs/commands.md) - every command and its flags
+- [Command line](docs/cli.md) - what commands exit with, their JSON, and how they are named
 - [Configuration](docs/configuration.md) - the config file, the settings overlay, notifications, photo and avatar caches
 - [Keybindings](docs/keybindings.md) - every key by context, and how to rebind them
 - [Themes](docs/themes.md) - theme slots, writing your own, every color token

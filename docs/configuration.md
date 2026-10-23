@@ -291,6 +291,32 @@ points, but it is deprecated and will be removed in the next release. If you hav
 not set it, your existing session and database are moved into the state directory
 automatically on first run - nothing is lost and you stay logged in.
 
+## Telegram's limits
+
+Telegram limits how often a client may call it, and answers one that calls
+too often with a wait (a flood wait) before it takes that kind of call again.
+`tele` keeps under the limits ahead of time and obeys the waits when they
+come:
+
+- Every call to Telegram, from every window and command joined to the same
+  `tele`, comes out of one budget: up to 40 at once, then 20 a second.
+- A wait holds only the kind of call that earned it: a wait on loading
+  history does not hold sending.
+- Work nobody is waiting on, such as full-size photos fetched ahead of time
+  (`photos.eager_full_quality`) and the forum topics read at connect, leaves
+  a third of the budget to what you are doing, and sits out any wait without
+  saying so.
+- When something you are waiting on runs into a wait of two seconds or more,
+  the status bar says "Telegram asks to wait" and counts it down. A wait of
+  up to 45 seconds is sat out; a longer one is reported instead, and a
+  message being sent stays queued and goes once the wait is over.
+
+Telegram does not publish its limits, so the budget above is a guess. If
+`tele` often has you waiting, or Telegram asks it to wait while you are doing
+nothing unusual, please
+[open an issue](https://github.com/sorokin-vladimir/tele/issues) with
+`tele.log` attached.
+
 ## Notifications
 
 A new message reaches you two ways, and `ui.notifications` switches them

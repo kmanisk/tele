@@ -106,6 +106,10 @@ type RootModel struct {
 	// clockSkew is how far the local clock is from Telegram's, zero when it is
 	// close enough to be accepted (#277).
 	clockSkew time.Duration
+	// throttleUntil is when the flood wait somebody's call ran into is over,
+	// and throttleTicking whether its countdown is running (#212).
+	throttleUntil   time.Time
+	throttleTicking bool
 	// hostAway is set while the host is away, and absences counts how many
 	// times it has been: the timer that names an absence carries its number,
 	// so one that fires after the host is back, or gone again, names nothing
@@ -587,6 +591,8 @@ func (m RootModel) updateInner(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return m, nil
 		}
 		return m.noticeTick(), noticeTickCmd()
+	case throttleTickMsg:
+		return m.handleThrottleTick(msg)
 	// projection deltas and events from the connection owner (#194)
 	case project.Delta:
 		return m.handleDelta(msg)

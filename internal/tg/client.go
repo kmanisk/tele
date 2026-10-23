@@ -54,6 +54,8 @@ type GotdClient struct {
 	// skew watches for a local clock too far off for gotd to accept what
 	// Telegram sends (#277).
 	skew *clockSkew
+	// throttle is every call's one budget to Telegram (#212).
+	throttle *throttle
 	// loggedOut ends the connection as a log out: the person's, or a key
 	// Telegram invalidated (#254, #297).
 	loggedOut loggedOut
@@ -77,6 +79,10 @@ func (c *GotdClient) SetOnClockSkew(report func(time.Duration)) { c.skew.SetRepo
 // every change. It must not block. Set before Connect.
 func (c *GotdClient) SetOnLink(report func(up bool)) { c.onLink = report }
 
+// SetOnThrottle installs the function told of a flood wait a call somebody
+// waits on has run into (#212). It must not block. Set before Connect.
+func (c *GotdClient) SetOnThrottle(report func(Throttled)) { c.throttle.SetReport(report) }
+
 func NewGotdClient(log *zap.Logger, endpoint Endpoint, stateStorage updates.StateStorage, trace bool) *GotdClient {
 	traceLog := zap.NewNop()
 	if trace {
@@ -93,6 +99,7 @@ func NewGotdClient(log *zap.Logger, endpoint Endpoint, stateStorage updates.Stat
 		stateStorage: stateStorage,
 		senderNames:  newNameCache(),
 		skew:         newClockSkew(),
+		throttle:     newThrottle(time.Now, sleepCtx),
 	}
 }
 
@@ -282,7 +289,12 @@ func (c *GotdClient) Connect(ctx context.Context, af *AuthFlow, readyCh chan<- s
 		// sendMessage, sendMedia) and nowhere else, until an unrelated pts gap
 		// forces a getDifference. Without this hook a forward stayed invisible
 		// until the other side happened to read it (#198).
-		Middlewares: []telegram.Middleware{c.errorMiddleware(), updhook.UpdateHook(arrivals.Handle)},
+		//
+		// The throttle is outermost, so every call of this client goes through
+		// one budget and the flood waits it reads are already mapped (#212).
+		Middlewares: []telegram.Middleware{
+			c.throttle.middleware(), c.errorMiddleware(), updhook.UpdateHook(arrivals.Handle),
+		},
 	})
 
 	// The connection runs under its own context so a log out - the person's,

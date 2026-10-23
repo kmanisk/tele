@@ -1,0 +1,46 @@
+name: Windows flake check
+
+# Temporary. Runs the tests that used to fail now and then on windows-latest,
+# many times over, to see that the config file read under the edit lock and the
+# socket read that is started again have made them steady. Remove it once a run
+# has come back clean.
+on:
+  workflow_dispatch:
+    inputs:
+      count:
+        description: "How many times each test runs"
+        default: "200"
+
+permissions:
+  contents: read
+
+jobs:
+  repeat:
+    name: repeat (${{ matrix.pkg }})
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - pkg: ./internal/config
+            run: "^(TestStore_Two|TestLoad_)"
+          - pkg: ./internal/ipc
+            run: "^(TestSocket_|TestWake_)"
+          - pkg: ./internal/hosting
+            run: "^(TestAttach_|TestReach_)"
+    runs-on: windows-latest
+    timeout-minutes: 90
+    env:
+      CGO_ENABLED: 0
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-go@v6
+        with:
+          go-version-file: go.mod
+          cache: true
+
+      # The testing package's own timeout fires before the job's, so a hang
+      # prints its goroutines instead of the job just being killed.
+      - name: test
+        shell: bash
+        run: go test -count=${{ inputs.count }} -timeout 80m -run '${{ matrix.run }}' ${{ matrix.pkg }}

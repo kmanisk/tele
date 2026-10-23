@@ -10,6 +10,7 @@ import (
 	"github.com/sorokin-vladimir/tele/internal/core/project"
 	"github.com/sorokin-vladimir/tele/internal/domain"
 	"github.com/sorokin-vladimir/tele/internal/ipc/serve"
+	"github.com/sorokin-vladimir/tele/internal/priority"
 )
 
 // received is one call as the serving side's surface saw it.
@@ -29,6 +30,17 @@ type recorder struct {
 	// block holds the calls named in it until their context ends.
 	block  map[string]bool
 	stream chan any
+	// inBackground is, for a call that records it, whether the context it was
+	// made with marked it as background work.
+	inBackground map[string]bool
+}
+
+// wasBackground reports whether the last call of method came marked as
+// background work.
+func (r *recorder) wasBackground(method string) bool {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	return r.inBackground[method]
 }
 
 func newRecorder() *recorder {
@@ -38,6 +50,8 @@ func newRecorder() *recorder {
 		calls:   make(chan received, 16),
 		block:   map[string]bool{},
 		stream:  make(chan any, core.StreamSize),
+
+		inBackground: map[string]bool{},
 	}
 }
 
@@ -196,7 +210,10 @@ func (r *recorder) FetchMedia(ctx context.Context, chatID int64, msgID int, slot
 	r.held(ctx, "FetchMedia")
 	return result[string](r, "FetchMedia", 0), err
 }
-func (r *recorder) SaveMedia(_ context.Context, chatID int64, msgID int, slot domain.MediaSlot, destDir, ref string) (string, error) {
+func (r *recorder) SaveMedia(ctx context.Context, chatID int64, msgID int, slot domain.MediaSlot, destDir, ref string) (string, error) {
+	r.mu.Lock()
+	r.inBackground["SaveMedia"] = priority.IsBackground(ctx)
+	r.mu.Unlock()
 	err := r.took("SaveMedia", chatID, msgID, slot, destDir, ref)
 	return result[string](r, "SaveMedia", 0), err
 }
