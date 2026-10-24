@@ -9,8 +9,8 @@ import (
 	"github.com/hashicorp/golang-lru/v2"
 )
 
-// ChunkSize respects upload.getFile's precise alignment: a multiple of 4 KiB
-// dividing 1 MiB, with no request crossing a 1 MiB boundary.
+// ChunkSize meets upload.getFile's precise alignment (multiples of 1 KiB).
+// Dividing 1 MiB keeps each request inside one Telegram file window.
 const ChunkSize = 128 << 10
 
 const cacheChunks = 8

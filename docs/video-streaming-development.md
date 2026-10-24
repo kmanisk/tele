@@ -50,7 +50,8 @@ falls back to `SaveMedia`.
 
 The source fetches aligned 128 KiB parts, with one Telegram read in flight per
 session, and an eight-part LRU (1 MiB retained). Alignment divides Telegram's
-1 MiB windows and meets its precise 4 KiB requirement. Cache identity is the
+1 MiB windows and meets its precise 1 KiB alignment requirement (see
+<https://core.telegram.org/api/files#downloading-files>). Cache identity is the
 session's immutable document plus offset; a refreshed message changing document
 ID or size terminates streaming. A shared cancellable refresh gate reuses fresh
 references from concurrent callers and retains the existing cooldown. Each
