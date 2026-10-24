@@ -33,13 +33,14 @@ func HasFFmpeg() bool {
 func ProbeVideo(ctx context.Context, path string) (VideoMeta, error) {
 	// One ffprobe call emits width/height (first video stream) and the container
 	// duration as key=value lines, which parseFFprobeOutput consumes.
-	cmd := exec.CommandContext(ctx, "ffprobe",
+	args := append(playbackInput(path),
 		"-v", "error",
 		"-select_streams", "v:0",
 		"-show_entries", "stream=width,height:format=duration",
 		"-of", "default=noprint_wrappers=1:nokey=0",
 		path,
 	)
+	cmd := exec.CommandContext(ctx, "ffprobe", args...)
 	out, err := cmd.Output()
 	if err != nil {
 		return VideoMeta{}, err

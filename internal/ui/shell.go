@@ -58,6 +58,8 @@ func (s Shell) Unsent() string { return s.root.Unsent() }
 // ended. Nothing of the old model carries over but the terminal's size, which
 // belongs to neither: what an account had on screen is the account's.
 func (s Shell) nextAccount(ended core.AccountEnded) (tea.Model, tea.Cmd) {
+	s.root = s.root.closeVideoPlayer()
+	s.root.cancelExternalVideo()
 	width, height := s.root.width, s.root.height
 	s.epoch++
 	s.root = s.next()

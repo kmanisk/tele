@@ -656,3 +656,8 @@ func applyHistory(t testing.TB, m ui.RootModel, st store.Store, chatID int64) (t
 	o.state.ApplyHistory(chatID, st.Messages(domain.HistoryKey{ChatID: chatID}))
 	return o.drain(m)
 }
+
+func (o *testOwner) OpenMediaStream(context.Context, int64, int, uint64) (core.MediaStream, error) {
+	return core.MediaStream{}, &telerr.Error{Kind: telerr.NotFound}
+}
+func (o *testOwner) CloseMediaStream(context.Context, uint64) error { return nil }

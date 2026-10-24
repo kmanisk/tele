@@ -89,9 +89,16 @@ type Surface interface {
 	GetUser(ctx context.Context, userID int64) (domain.User, error)
 
 	// Media. The owner downloads and caches; the client decodes. Paths cross
-	// the boundary, never bytes (#196).
+	// the boundary, never bytes (#196). Video playback may instead receive a
+	// short-lived loopback capability, still owned by this attachment.
 	FetchMedia(ctx context.Context, chatID int64, msgID int, slot domain.MediaSlot) (string, error)
 	SaveMedia(ctx context.Context, chatID int64, msgID int, slot domain.MediaSlot, destDir, ref string) (string, error)
+	// A playback session belongs to this attachment; opening another replaces
+	// it. seq increases for each open on this attachment. Close may precede
+	// Open and cancels through that sequence, including a lost reply.
+	// Disconnecting also closes it.
+	OpenMediaStream(ctx context.Context, chatID int64, msgID int, seq uint64) (MediaStream, error)
+	CloseMediaStream(ctx context.Context, id uint64) error
 	// InvalidateMedia drops a cached file that turned out to be undecodable, so
 	// the next fetch downloads it again instead of returning the same bytes.
 	InvalidateMedia(chatID int64, msgID int, slot domain.MediaSlot)

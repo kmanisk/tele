@@ -8,6 +8,7 @@ import (
 
 	"github.com/sorokin-vladimir/tele/internal/core/project"
 	"github.com/sorokin-vladimir/tele/internal/domain"
+	"github.com/sorokin-vladimir/tele/internal/videostream"
 )
 
 // StreamSize bounds what one client may fall behind by before it starts losing
@@ -33,8 +34,11 @@ type seat struct {
 	// left is set once the seat ends. Nothing it would say after that reaches
 	// the stream, which is what keeps a late delta of an owner that ended from
 	// landing after the news that it did.
-	mu   sync.Mutex
-	left bool
+	mu                 sync.Mutex
+	left               bool
+	videoStream        *videostream.Session
+	videoSequence      uint64
+	videoClosedThrough uint64
 	// resyncArmed is set while a rebuild is scheduled to repair a delta this
 	// client lost, so a burst of drops schedules one rebuild rather than one
 	// each (#276).
@@ -58,7 +62,12 @@ func (s *seat) leave() {
 	s.driverGone(s.id)
 	s.mu.Lock()
 	s.left = true
+	stream := s.videoStream
+	s.videoStream = nil
 	s.mu.Unlock()
+	if stream != nil {
+		stream.Close()
+	}
 	s.clientsMu.Lock()
 	delete(s.clients, s.id)
 	s.clientsMu.Unlock()

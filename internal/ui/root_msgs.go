@@ -1,6 +1,7 @@
 package ui
 
 import (
+	vmedia "github.com/sorokin-vladimir/tele/internal/media"
 	"image"
 
 	"github.com/sorokin-vladimir/tele/internal/ui/components"
@@ -31,19 +32,23 @@ type gifTickMsg struct {
 	gen int
 }
 
-// videoFileReadyMsg carries the temp-file path of a downloaded video, ready for
-// the in-app player to decode and display.
-type videoFileReadyMsg struct {
-	docID int64
-	path  string
+// videoProbedMsg carries a prepared local path or progressive URL. target
+// identifies this exact open, including close/reopen of the same document.
+type videoProbedMsg struct {
+	target      *videoPlayer
+	path        string
+	w, h        int
+	release     func()
+	progressive bool
+	err         error
 }
 
-// videoProbedMsg carries a video's real pixel dimensions (from ffprobe) so the
-// modal box can be sized to the true aspect before decoding.
-type videoProbedMsg struct {
-	docID int64
-	path  string
-	w, h  int
+type videoFrameMsg struct {
+	target *videoPlayer
+	source *vmedia.FrameSource
+	frame  image.Image
+	ok     bool
+	err    error
 }
 
 // videoTickMsg advances the modal video by one frame. gen drops stale ticks.

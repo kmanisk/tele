@@ -24,6 +24,8 @@ var hostAwayAfter = 2 * time.Second
 // handleHostAway starts an absence of the host. Enter stops sending at once;
 // the status bar names the absence only if it lasts.
 func (m RootModel) handleHostAway() (RootModel, tea.Cmd) {
+	m = m.closeVideoPlayer()
+	m.cancelExternalVideo()
 	if !m.hostAway {
 		m.hostAway = true
 		m.absences++

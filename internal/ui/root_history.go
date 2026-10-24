@@ -94,7 +94,7 @@ func (m RootModel) updateNetworkMsg(msg tea.Msg) (RootModel, tea.Cmd) {
 			return m.openPhotoExternal(photoID)
 		}
 		if _, ok := m.chat.SelectedMessageVideo(); ok {
-			return m.startDocumentOpen(m.chat.SelectedMessageID(), m.selectedDownloadLabel())
+			return m.startVideoExternal(m.chat.SelectedMessageID(), m.selectedDownloadLabel())
 		}
 		return m, nil
 

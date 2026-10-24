@@ -207,6 +207,8 @@ type RootModel struct {
 	voicePlayer         *audio.Player
 	filePicker          *screens.FilePickerModel
 	videoPlayer         *videoPlayer
+	videoGeneration     int
+	externalVideoCancel context.CancelFunc
 	photoViewer         *photoViewer
 	pendingAttachments  []pendingAttachment
 	lastPickerDir       string
@@ -590,8 +592,10 @@ func (m RootModel) updateInner(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return m.handleGifFramesReady(msg)
 	case gifTickMsg:
 		return m.handleGifTick(msg)
-	case videoFileReadyMsg:
-		return m.handleVideoFileReady(msg)
+	case videoFrameMsg:
+		return m.handleVideoFrame(msg)
+	case externalVideoStartedMsg:
+		return m.handleExternalVideoStarted(msg)
 	case videoProbedMsg:
 		return m.handleVideoProbed(msg)
 	case videoTickMsg:

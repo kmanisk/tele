@@ -176,6 +176,14 @@ func (a *Attachment) SaveMedia(ctx context.Context, chatID int64, msgID int, slo
 	return ask[string](a, ctx, "SaveMedia", chatID, msgID, slot, destDir, ref)
 }
 
+func (a *Attachment) OpenMediaStream(ctx context.Context, chatID int64, msgID int, seq uint64) (core.MediaStream, error) {
+	return ask[core.MediaStream](a, ctx, "OpenMediaStream", chatID, msgID, seq)
+}
+
+func (a *Attachment) CloseMediaStream(ctx context.Context, id uint64) error {
+	return do(a, ctx, "CloseMediaStream", id)
+}
+
 func (a *Attachment) FetchAvatar(ctx context.Context, userID, avatarID int64) (string, error) {
 	return ask[string](a, ctx, "FetchAvatar", userID, avatarID)
 }

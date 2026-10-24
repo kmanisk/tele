@@ -131,6 +131,7 @@ func (m RootModel) handleDownloadSelected() (RootModel, tea.Cmd) {
 // openPhotoExternal opens the selected photo in the OS default image viewer
 // using the cached (full-quality when available) image. No-op if not cached.
 func (m RootModel) openPhotoExternal(photoID int64) (RootModel, tea.Cmd) {
+	m.cancelExternalVideo()
 	img, ok := m.fullImageCache.Get(photoID)
 	if !ok {
 		img, _ = m.imageCache.Get(photoID)

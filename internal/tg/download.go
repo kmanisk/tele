@@ -8,12 +8,25 @@ import (
 	"fmt"
 	"io"
 
+	"github.com/gotd/contrib/tg_io"
 	"github.com/gotd/td/telegram/downloader"
 	gotdtg "github.com/gotd/td/tg"
 
 	"github.com/sorokin-vladimir/tele/internal/domain"
 	"github.com/sorokin-vladimir/tele/internal/telerr"
 )
+
+// ReadDocumentChunk retrieves an aligned range, never the preceding bytes.
+// The caller aligns/caches chunks and refreshes expired message references.
+func (c *GotdClient) ReadDocumentChunk(ctx context.Context, ref domain.DocumentRef, off int64, dst []byte) (int, error) {
+	api, err := c.acquireAPI()
+	if err != nil {
+		return 0, err
+	}
+	loc := &gotdtg.InputDocumentFileLocation{ID: ref.ID, AccessHash: ref.AccessHash, FileReference: ref.FileReference}
+	n, err := tg_io.NewDownloader(api).ChunkSource(ref.Size, loc).Chunk(ctx, off, dst)
+	return int(n), err
+}
 
 // DownloadPhotoToFile streams the raw photo bytes (the size named by
 // ref.ThumbSize) directly into dst without decoding, so a photo can be saved to

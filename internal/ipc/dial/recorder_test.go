@@ -227,3 +227,13 @@ func (r *recorder) FetchAvatar(_ context.Context, userID, avatarID int64) (strin
 func (r *recorder) InvalidateAvatar(userID, avatarID int64) {
 	_ = r.took("InvalidateAvatar", userID, avatarID)
 }
+
+func (r *recorder) OpenMediaStream(ctx context.Context, chatID int64, msgID int, seq uint64) (core.MediaStream, error) {
+	r.held(ctx, "OpenMediaStream")
+	err := r.took("OpenMediaStream", chatID, msgID, seq)
+	return result[core.MediaStream](r, "OpenMediaStream", 0), err
+}
+func (r *recorder) CloseMediaStream(ctx context.Context, id uint64) error {
+	r.held(ctx, "CloseMediaStream")
+	return r.took("CloseMediaStream", id)
+}

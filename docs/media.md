@@ -27,7 +27,32 @@ which is the desktop default.
 ## Video and round video (кружки)
 
 An inline thumbnail preview with a `▶` and duration overlay; round notes are
-shown as a circle. Press `o` to play in the system player.
+shown as a circle. Press `o` to open a video. In Kitty graphics mode with
+`ffmpeg`, it plays silently in the existing modal: space pauses/resumes, the
+arrow keys page through an album, `o` switches to an external player, and
+escape closes it. In other terminals, including Foot, it opens externally.
+
+Videos with a known file size use progressive playback: the account owner
+serves requested Telegram byte ranges through a private, temporary loopback
+URL. Playback can start before the entire video arrives, without creating a
+complete temporary video file. Container metadata can be fetched from the end
+of the file. Incoming `SupportsStreaming` metadata is not required. A small
+bounded memory cache avoids repeated reads; this does not fill the disk cache.
+
+On Linux, external playback uses `mpv` when it is on `PATH`, including for `O`.
+Seeking in mpv retrieves the required ranges directly. The in-app modal keeps
+its existing controls and does not add seeking or audio. Other platforms, or
+Linux without mpv, retain full download followed by the system player; an HTTP
+URL is never handed to `xdg-open`. Missing size, transport failure during
+opening, or player failure also falls back to the complete local file.
+
+Closing the modal or mpv, opening another video or photo, disconnecting the
+window, or exiting cancels its stream. Tele owns the mpv process it launches.
+Sessions expire after four hours. Pausing applies backpressure, with a small
+amount of player/socket read-ahead; it does not save the whole file.
+
+The explicit Download action is separate: it always saves the complete file
+to the Downloads directory using the existing downloader, with progress.
 
 ## GIFs
 
@@ -55,7 +80,9 @@ feature on the roadmap.
 
 ## Optional dependency: `ffmpeg`
 
-Install `ffmpeg` (with `ffprobe`) on your `PATH` to enable inline GIF playback,
-which decodes frames, and to attach duration, dimensions and a thumbnail when
-sending videos. It is entirely optional: without it, GIFs stay static and videos
-still send, since Telegram generates the preview server-side.
+Install `ffmpeg` (with `ffprobe`) on your `PATH` for in-app video playback,
+inline GIF playback, and duration, dimensions and thumbnails when sending
+videos. Install `mpv` for progressive external video playback on Linux.
+These are optional: without ffmpeg, GIFs stay static and videos still send
+(Telegram generates the preview server-side); without mpv, the system player
+opens a completed download.

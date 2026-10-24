@@ -174,6 +174,15 @@ func (o *Owner) Stop() {
 	o.stopped = true
 	o.workMu.Unlock()
 	o.cancel()
+	o.clientsMu.Lock()
+	clients := make([]*seat, 0, len(o.clients))
+	for _, s := range o.clients {
+		clients = append(clients, s)
+	}
+	o.clientsMu.Unlock()
+	for _, s := range clients {
+		s.stopVideoStream()
+	}
 	o.work.Wait()
 }
 

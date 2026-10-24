@@ -13,6 +13,7 @@ require (
 	github.com/ebitengine/oto/v3 v3.4.0
 	github.com/gabriel-vasile/mimetype v1.4.13
 	github.com/gen2brain/beeep v0.11.2
+	github.com/gotd/contrib v0.25.0
 	github.com/gotd/log/logzap v0.1.1
 	github.com/gotd/td v0.161.0
 	github.com/hashicorp/golang-lru/v2 v2.0.7

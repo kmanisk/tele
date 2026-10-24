@@ -48,6 +48,8 @@ var surface = map[string]any{
 	"GetUser":          core.Surface.GetUser,
 	"FetchMedia":       core.Surface.FetchMedia,
 	"SaveMedia":        core.Surface.SaveMedia,
+	"OpenMediaStream":  core.Surface.OpenMediaStream,
+	"CloseMediaStream": core.Surface.CloseMediaStream,
 	"InvalidateMedia":  core.Surface.InvalidateMedia,
 	"FetchAvatar":      core.Surface.FetchAvatar,
 	"InvalidateAvatar": core.Surface.InvalidateAvatar,

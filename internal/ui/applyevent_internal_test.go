@@ -714,3 +714,8 @@ func TestOpenDocumentCmd_LaunchesTheSavedFile(t *testing.T) {
 		t.Fatalf("opened %q, want the saved clip", opened)
 	}
 }
+
+func (o *ownerStub) OpenMediaStream(context.Context, int64, int, uint64) (core.MediaStream, error) {
+	return core.MediaStream{}, &telerr.Error{Kind: telerr.NotFound}
+}
+func (o *ownerStub) CloseMediaStream(context.Context, uint64) error { return nil }

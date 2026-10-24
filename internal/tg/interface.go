@@ -9,6 +9,12 @@ import (
 	"github.com/sorokin-vladimir/tele/internal/store"
 )
 
+// DocumentChunkReader is the optional ranged transport used by video playback.
+// Buffers and offsets must obey upload.getFile's precise alignment requirements.
+type DocumentChunkReader interface {
+	ReadDocumentChunk(context.Context, domain.DocumentRef, int64, []byte) (int, error)
+}
+
 // Client is the interface for all Telegram operations.
 // All callers (ui, app) depend on this interface, not on gotd directly.
 type Client interface {

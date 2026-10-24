@@ -56,6 +56,8 @@ func (m RootModel) selectedPhotoInfo() (string, time.Time) {
 // full-quality download so it can be swapped in on arrival. ref/msgID/sender/date
 // are supplied by the caller (mirrors openVideoModal).
 func (m RootModel) openPhotoModal(ref domain.PhotoRef, msgID int, sender string, date time.Time) (RootModel, tea.Cmd) {
+	m = m.closeVideoPlayer()
+	m.cancelExternalVideo()
 	photoID := ref.ID
 	timeLabel := ""
 	if !date.IsZero() {
@@ -149,7 +151,7 @@ func (m RootModel) pageModal(delta int) (RootModel, tea.Cmd) {
 		if useInAppVideoPlayer(m.imageMode, vmedia.HasFFmpeg()) {
 			m, c = m.openVideoModalAlbum(*p.Doc, p.MsgID, p.DurSecs, p.Sender, album, next)
 		} else {
-			m, c = m.startDocumentOpen(p.MsgID, p.Sender)
+			m, c = m.startVideoExternal(p.MsgID, p.Sender)
 		}
 		cmds = append(cmds, c)
 	}

@@ -21,6 +21,8 @@ type HostLostMsg struct {
 // that looks alive and receives nothing is the failure the whole design exists
 // to avoid. What was being typed is kept, so the way out can hand it back.
 func (m RootModel) handleHostLost(msg HostLostMsg) (RootModel, tea.Cmd) {
+	m = m.closeVideoPlayer()
+	m.cancelExternalVideo()
 	if m.screen == ScreenMain {
 		m.unsent = m.chat.ComposerValue()
 	}

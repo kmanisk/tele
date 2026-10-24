@@ -2,6 +2,7 @@ package ui
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"image"
 	"strings"
@@ -24,16 +25,23 @@ func useInAppVideoPlayer(mode media.Mode, hasFFmpeg bool) bool {
 	return mode == media.ModeKitty && hasFFmpeg
 }
 
-// videoPlayer is the in-app video modal overlay state. Phase 3a holds a single
-// (first) frame; Phase 3b adds the streaming source, play state, and position.
+// videoPlayer owns the modal's playback context, source and current frame.
 type videoPlayer struct {
-	docID   int64
-	path    string // downloaded temp file, for the external-player fallback (o)
-	durSecs int
-	title   string // sender name, shown on the top border
-	frame   image.Image
-	cols    int
-	rows    int
+	docID       int64
+	streamSeq   uint64
+	path        string // local file or private loopback URL
+	ctx         context.Context
+	cancel      context.CancelFunc
+	release     func()
+	chatID      int64
+	msgID       int
+	progressive bool
+	readPending bool
+	durSecs     int
+	title       string // sender name, shown on the top border
+	frame       image.Image
+	cols        int
+	rows        int
 
 	source     *vmedia.FrameSource
 	playing    bool
@@ -106,29 +114,42 @@ func (m RootModel) videoModalBox(imgW, imgH int) (int, int) {
 	return m.modalImageBox(imgW, imgH, 1)
 }
 
-// downloadVideoFileCmd streams a video's bytes to a temp file for the in-app
-// player. Mirrors downloadGifFileCmd but carries the duration for the progress
-// bar and yields a videoFileReadyMsg.
-func saveVideoFileCmd(ctx context.Context, o Owner, chatID int64, msgID int, docID int64, tmpDir string) tea.Cmd {
+// openVideoSourceCmd obtains a progressive capability before probing. Failure
+// falls back once to the established full-file path, within the playback context.
+func openVideoSourceCmd(ctx context.Context, o Owner, chatID int64, msgID int, tmpDir string, target *videoPlayer, localOnly bool) tea.Cmd {
+	seq := target.streamSeq
 	return func() tea.Msg {
-		path, err := o.SaveMedia(ctx, chatID, msgID, domain.DocFull, tmpDir, "")
-		if err != nil {
+		if ctx.Err() != nil {
 			return nil
 		}
-		return videoFileReadyMsg{docID: docID, path: path}
-	}
-}
-
-// probeVideoCmd reads the video's real dimensions so the modal box matches its
-// aspect. On failure it falls back to a 16:9 box.
-func probeVideoCmd(ctx context.Context, docID int64, path string) tea.Cmd {
-	return func() tea.Msg {
-		meta, err := vmedia.ProbeVideo(ctx, path)
+		var path string
+		var err error
+		release := func() {}
+		if localOnly {
+			path, err = o.SaveMedia(ctx, chatID, msgID, domain.DocFull, tmpDir, "")
+		} else {
+			path, release, err = playbackSource(ctx, o, chatID, msgID, tmpDir, seq)
+		}
+		if err != nil {
+			return videoProbedMsg{target: target, err: err}
+		}
+		progressive := strings.HasPrefix(path, "http://127.0.0.1:")
+		probeCtx, cancel := context.WithTimeout(ctx, 20*time.Second)
+		meta, probeErr := vmedia.ProbeVideo(probeCtx, path)
+		cancel()
+		if probeErr != nil && progressive && ctx.Err() == nil {
+			release()
+			return openVideoSourceCmd(ctx, o, chatID, msgID, tmpDir, target, true)()
+		}
+		if ctx.Err() != nil {
+			release()
+			return nil
+		}
 		w, h := 1920, 1080
-		if err == nil && meta.Width > 0 && meta.Height > 0 {
+		if probeErr == nil && meta.Width > 0 && meta.Height > 0 {
 			w, h = meta.Width, meta.Height
 		}
-		return videoProbedMsg{docID: docID, path: path, w: w, h: h}
+		return videoProbedMsg{target: target, path: path, w: w, h: h, release: release, progressive: progressive}
 	}
 }
 
@@ -169,11 +190,14 @@ func (m RootModel) selectedVideoInfo() (int, string) {
 }
 
 // openVideoModal opens the modal shell immediately (so the loading spinner shows
-// while the file downloads) and kicks off the download.
+// while the source opens) and starts progressive playback.
 func (m RootModel) openVideoModal(ref domain.DocumentRef, msgID, durSecs int, sender string) (RootModel, tea.Cmd) {
-	cols, rows := m.videoModalBox(16, 9) // provisional box; resized once probed
-	m.videoPlayer = &videoPlayer{docID: ref.ID, durSecs: durSecs, title: sender, cols: cols, rows: rows}
-	return m, saveVideoFileCmd(m.ctx, m.owner, m.currentChatID, msgID, ref.ID, m.tmpDir)
+	m = m.closeVideoPlayer()
+	m.cancelExternalVideo()
+	cols, rows := m.videoModalBox(16, 9)
+	ctx, cancel := context.WithCancel(m.ctx)
+	m.videoPlayer = &videoPlayer{docID: ref.ID, streamSeq: playbackSequence.Add(1), durSecs: durSecs, title: sender, cols: cols, rows: rows, ctx: ctx, cancel: cancel, chatID: m.currentChatID, msgID: msgID}
+	return m, openVideoSourceCmd(ctx, m.owner, m.currentChatID, msgID, m.tmpDir, m.videoPlayer, false)
 }
 
 // openVideoModalAlbum opens a video that is part of an album, recording the full
@@ -187,63 +211,112 @@ func (m RootModel) openVideoModalAlbum(ref domain.DocumentRef, msgID, durSecs in
 	return m, cmd
 }
 
-func (m RootModel) handleVideoFileReady(msg videoFileReadyMsg) (RootModel, tea.Cmd) {
-	if m.videoPlayer == nil || m.videoPlayer.docID != msg.docID {
-		return m, nil
-	}
-	// File downloaded; probe real dimensions so the box keeps the aspect, then
-	// stream (handleVideoProbed).
-	m.videoPlayer.path = msg.path
-	return m, probeVideoCmd(m.ctx, msg.docID, msg.path)
-}
-
 // handleVideoProbed sizes the box to the real aspect and opens the frame stream.
 func (m RootModel) handleVideoProbed(msg videoProbedMsg) (RootModel, tea.Cmd) {
-	if m.videoPlayer == nil || m.videoPlayer.docID != msg.docID {
+	if m.videoPlayer == nil || m.videoPlayer != msg.target {
+		if msg.release != nil {
+			msg.release()
+		}
 		return m, nil
 	}
+	if msg.err != nil {
+		return m.closeVideoPlayer(), func() tea.Msg { return errStatus("open video", msg.err) }
+	}
+	m.videoPlayer.path = msg.path
+	m.videoPlayer.release = msg.release
+	m.videoPlayer.progressive = msg.progressive
 	cols, rows := m.videoModalBox(msg.w, msg.h)
 	m.videoPlayer.cols = cols
 	m.videoPlayer.rows = rows
 	w := int(float64(cols) * mustCellW())
 	h := int(float64(rows) * mustCellH())
-	src, err := vmedia.OpenFrameSource(m.ctx, msg.path, w, h, videoFPS)
+	src, err := vmedia.OpenFrameSource(m.videoPlayer.ctx, msg.path, w, h, videoFPS)
 	if err != nil {
-		return m, nil // leave the spinner; q closes
+		return m.videoDecodeFailed(err)
 	}
 	m.videoPlayer.source = src
 	m.videoPlayer.playing = true
 	m.videoPlayer.posFrames = 0
-	m.videoPlayer.gen++
+	m.videoGeneration++
+	m.videoPlayer.gen = m.videoGeneration
 	return m, videoTickCmd(m.videoPlayer.gen)
 }
 
-// handleVideoTick pulls and shows the next frame, then re-arms. At EOF it loops
-// by reopening the source. Pausing stops re-arming (ffmpeg backpressures).
+// handleVideoTick requests a frame off the UI loop. A stalled network read
+// must not block close, pause or album paging.
 func (m RootModel) handleVideoTick(msg videoTickMsg) (RootModel, tea.Cmd) {
 	vp := m.videoPlayer
 	if vp == nil || vp.source == nil || msg.gen != vp.gen || !vp.playing {
 		return m, nil
 	}
-	frame, ok := vp.source.Next()
-	if !ok {
-		// End of stream: loop from the start.
+	if vp.readPending {
+		return m, nil
+	}
+	vp.readPending = true
+	src := vp.source
+	return m, func() tea.Msg {
+		frame, ok := src.Next()
+		var err error
+		if !ok {
+			err = src.Err()
+		}
+		return videoFrameMsg{target: vp, source: src, frame: frame, ok: ok, err: err}
+	}
+}
+
+func (m RootModel) videoDecodeFailed(err error) (RootModel, tea.Cmd) {
+	vp := m.videoPlayer
+	if vp != nil && vp.progressive && vp.ctx.Err() == nil {
+		if vp.source != nil {
+			_ = vp.source.Close()
+			vp.source = nil
+		}
+		if vp.release != nil {
+			vp.release()
+			vp.release = nil
+		}
+		vp.progressive = false
+		return m, openVideoSourceCmd(vp.ctx, m.owner, vp.chatID, vp.msgID, m.tmpDir, vp, true)
+	}
+	return m.closeVideoPlayer(), func() tea.Msg { return errStatus("play video", err) }
+}
+
+func (m RootModel) handleVideoFrame(msg videoFrameMsg) (RootModel, tea.Cmd) {
+	vp := m.videoPlayer
+	if vp == nil || vp != msg.target || vp.source != msg.source {
+		return m, nil
+	}
+	vp.readPending = false
+	if !msg.ok {
 		_ = vp.source.Close()
+		if msg.err != nil || vp.posFrames == 0 {
+			err := msg.err
+			if err == nil {
+				err = errors.New("video produced no frames")
+			}
+			return m.videoDecodeFailed(err)
+		}
 		w := int(float64(vp.cols) * mustCellW())
 		h := int(float64(vp.rows) * mustCellH())
-		src, err := vmedia.OpenFrameSource(m.ctx, vp.path, w, h, videoFPS)
+		src, err := vmedia.OpenFrameSource(vp.ctx, vp.path, w, h, videoFPS)
 		if err != nil {
-			return m, nil
+			return m.videoDecodeFailed(err)
 		}
 		vp.source = src
 		vp.posFrames = 0
-		return m, videoTickCmd(vp.gen)
+		if vp.playing {
+			return m, videoTickCmd(vp.gen)
+		}
+		return m, nil
 	}
-	vp.frame = frame
+	if !vp.playing {
+		return m, nil
+	}
+	vp.frame = msg.frame
 	vp.posFrames++
-	m.imageCache.Add(videoPlayerKey, frame)
+	m.imageCache.Add(videoPlayerKey, msg.frame)
 	id := m.kittyStore.IDFor(videoPlayerKey)
-	return m, tea.Batch(transmitFrameToID(id, frame, vp.cols, vp.rows), videoTickCmd(vp.gen))
+	return m, tea.Batch(transmitFrameToID(id, msg.frame, vp.cols, vp.rows), videoTickCmd(vp.gen))
 }
 
 // videoSpinnerGlyph returns the loading-spinner glyph for the given index,
@@ -271,8 +344,14 @@ func (m RootModel) togglePlay() RootModel {
 // closeVideoPlayer tears down the overlay, stops ffmpeg, and drops the frame.
 func (m RootModel) closeVideoPlayer() RootModel {
 	if m.videoPlayer != nil {
+		if m.videoPlayer.cancel != nil {
+			m.videoPlayer.cancel()
+		}
 		if m.videoPlayer.source != nil {
 			_ = m.videoPlayer.source.Close()
+		}
+		if m.videoPlayer.release != nil {
+			m.videoPlayer.release()
 		}
 		m.videoPlayer.gen++
 		m.imageCache.Remove(videoPlayerKey)
@@ -293,8 +372,10 @@ func (m RootModel) handleVideoPlayerKey(keyStr string) (RootModel, tea.Cmd) {
 	case "left", "h":
 		return m.pageModal(-1)
 	case "o":
-		if m.videoPlayer != nil && m.videoPlayer.path != "" {
-			openPath(m.videoPlayer.path)
+		if m.videoPlayer != nil {
+			msgID, title := m.videoPlayer.msgID, m.videoPlayer.title
+			m = m.closeVideoPlayer()
+			return m.startVideoExternal(msgID, title)
 		}
 		return m, nil
 	case " ", "space":
@@ -404,7 +485,7 @@ func (m RootModel) videoPlayerView(base string) string {
 		}
 		if vp.rows > 0 {
 			// Center "loading…" both vertically (middle row) and horizontally.
-			line := theme.S().Body.Render(videoSpinnerGlyph(vp.spinnerIdx) + " loading…")
+			line := theme.S().Body.Render(videoSpinnerGlyph(vp.spinnerIdx) + " opening video…")
 			if lp := (vp.cols - lipgloss.Width(line)) / 2; lp > 0 {
 				line = theme.Pad(lp) + line
 			}

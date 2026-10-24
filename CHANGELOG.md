@@ -11,6 +11,12 @@ Older releases are at <https://github.com/sorokin-vladimir/tele/releases>.
 
 ## [Unreleased]
 
+### Added
+
+- Progressive Telegram video playback through a private, bounded HTTP range
+  stream, for the Kitty/ffmpeg modal and external mpv on Linux. Seeking in mpv
+  fetches later ranges directly; explicit downloads still save complete files.
+
 ## [2.0.0] - 2026-10-23 — One tele for the account, and a service to keep it
 
 ### Upgrading from 1.11

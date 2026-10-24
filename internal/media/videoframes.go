@@ -26,7 +26,7 @@ func readFrame(r io.Reader, w, h int) (*image.NRGBA, error) {
 // whole file into memory.
 const frameBufferSize = 4
 
-// FrameSource streams decoded RGBA frames from a local video file via ffmpeg.
+// FrameSource streams decoded RGBA frames from a local file or HTTP URL via ffmpeg.
 // Frames are exactly w×h. Not safe for concurrent use by multiple goroutines.
 type FrameSource struct {
 	ctx    context.Context // cancelled by Close; unblocks an in-flight frame send
@@ -43,7 +43,7 @@ type FrameSource struct {
 // binary is missing).
 func OpenFrameSource(ctx context.Context, path string, w, h, fps int) (*FrameSource, error) {
 	cctx, cancel := context.WithCancel(ctx)
-	cmd := exec.CommandContext(cctx, "ffmpeg",
+	args := append(playbackInput(path),
 		"-nostdin",
 		"-loglevel", "error",
 		"-i", path,
@@ -53,6 +53,7 @@ func OpenFrameSource(ctx context.Context, path string, w, h, fps int) (*FrameSou
 		"-pix_fmt", "rgba",
 		"pipe:1",
 	)
+	cmd := exec.CommandContext(cctx, "ffmpeg", args...)
 	stdout, err := cmd.StdoutPipe()
 	if err != nil {
 		cancel()
@@ -82,7 +83,11 @@ func (fs *FrameSource) read(stdout io.Reader, w, h int) {
 	// Reap the process once decoding stops. A non-zero exit is expected when the
 	// consumer cancels mid-stream (Close), so the wait error is not surfaced. This
 	// runs before close(frames)/close(done) so Close's <-done sees a reaped process.
-	defer func() { _ = fs.cmd.Wait() }()
+	defer func() {
+		if err := fs.cmd.Wait(); err != nil && fs.err == nil && fs.ctx.Err() == nil {
+			fs.err = err
+		}
+	}()
 	for {
 		frame, err := readFrame(stdout, w, h)
 		if err != nil {

@@ -29,7 +29,7 @@
 
           # Must be regenerated whenever go.mod/go.sum changes: run `nix build`,
           # copy the "got: sha256-..." hash it reports, and paste it here.
-          vendorHash = "sha256-eCWK0KmDdsZWMx4RIXyJ8chbG6wGfXTuS0jTF4eB02M=";
+          vendorHash = "sha256-klyWSE4XiPiIyw8PpYC8qJ1fvPEx7cMcfvUCLiaksDs=";
 
           subPackages = [ "cmd/tele" ];
 
