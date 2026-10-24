@@ -71,6 +71,8 @@ func TestFFmpegProgressive(t *testing.T) {
 	require.NoError(t, err)
 	_, ok := fs.Next()
 	require.True(t, ok)
+	firstFrameTime := time.Since(start)
+	firstFrameBytes, _ := stats()
 	require.NoError(t, fs.Close())
 	fetched, offsets := stats()
 	require.Less(t, fetched, size/4, "first frame must not require the full source")
@@ -80,7 +82,7 @@ func TestFFmpegProgressive(t *testing.T) {
 		tail = tail || off > size*9/10
 	}
 	require.True(t, tail, "metadata at the end requires an out-of-order range")
-	t.Logf("synthetic size=%d first_frame=%s fetched=%d chunks=%d", size, time.Since(start), fetched, len(offsets))
+	t.Logf("synthetic size=%d first_frame=%s first_frame_bytes=%d bytes_at_close=%d chunks=%d", size, firstFrameTime, firstFrameBytes, fetched, len(offsets))
 	// Input seeking asks for a later region, rather than decoding the prefix.
 	before := len(offsets)
 	cmd := exec.CommandContext(ctx, "ffmpeg", "-nostdin", "-v", "error", "-ss", "48", "-i", s.URL, "-frames:v", "1", "-f", "null", "-")
